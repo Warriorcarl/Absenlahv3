@@ -140,5 +140,10 @@ async def confirm_arrival(log_id: str, arrival_time: datetime, current_user: dic
     )
 
     if violation:
-        return {"message": "Arrival confirmed with violation (took >2 hours or after 14:00). Potong Jatah Libur will be applied."}
+        # Automated deduction for Leave Quota (Potong Jatah Libur)
+        await user_stats_collection.update_one(
+            {"user_id": current_user["_id"], "month": log["check_in_time"].month, "year": log["check_in_time"].year},
+            {"$inc": {"remaining_leave_quota": -1}}
+        )
+        return {"message": "Arrival confirmed with violation (took >2 hours or after 14:00). Potong Jatah Libur applied."}
     return {"message": "Arrival confirmed on time"}

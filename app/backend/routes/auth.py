@@ -59,8 +59,17 @@ async def login(
             if user.get("hardware_id") != hardware_id:
                 raise HTTPException(status_code=403, detail="Account bound to another device")
 
+    # Force Password Change for Admin on first login
+    force_password_change = False
+    if user["username"] == "administrator" and not user.get("first_login_done"):
+        force_password_change = True
+
     access_token = create_access_token(data={"sub": user["username"], "role": user["role"], "user_id": user["_id"]})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "force_password_change": force_password_change
+    }
 
 @router.post("/google-login")
 async def google_login(token: str, hardware_id: Optional[str] = None):
