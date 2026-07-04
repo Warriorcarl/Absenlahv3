@@ -243,7 +243,7 @@ step_clone_repository() {
     local branch
     branch="$(ask "Branch to check out" "main")"
 
-    local target_dir="${INSTALL_ROOT}"
+    local target_dir="${INSTALL_ROOT}/app"
 
     install -d -m 0755 "$INSTALL_ROOT"
     install -d -m 0755 "$BUILD_OUTPUT_DIR"
@@ -258,17 +258,12 @@ step_clone_repository() {
         git -C "$target_dir" pull --ff-only origin "$branch"
     else
         log "Cloning $repo_url (branch: $branch) into $target_dir"
-        # Temp dir for cloning
-        local tmp_clone="/tmp/absenlah_clone"
-        rm -rf "$tmp_clone"
         if [[ -n "${GITHUB_TOKEN:-}" ]] && [[ "$repo_url" == https://* ]]; then
             local authed_url="${repo_url/https:\/\//https://${GITHUB_TOKEN}@}"
-            git clone --branch "$branch" --depth 1 "$authed_url" "$tmp_clone"
+            git clone --branch "$branch" --depth 1 "$authed_url" "$target_dir"
         else
-            git clone --branch "$branch" --depth 1 "$repo_url" "$tmp_clone"
+            git clone --branch "$branch" --depth 1 "$repo_url" "$target_dir"
         fi
-        cp -r "${tmp_clone}/." "$target_dir/"
-        rm -rf "$tmp_clone"
         record_state "repo_cloned"
     fi
 
@@ -385,7 +380,7 @@ services:
 
   fastapi:
     build:
-      context: ./backend
+      context: ./app/backend
     container_name: absenlah_fastapi
     restart: unless-stopped
     depends_on:
@@ -395,6 +390,7 @@ services:
       - DB_NAME=absenlah
       - SECRET_KEY=${JWT_SECRET}
       - TZ=${TZ}
+      - PYTHONPATH=/app
     expose:
       - "8000"
 
@@ -534,7 +530,7 @@ EOF
     docker compose --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" up -d --build --remove-orphans
 
     log "Seeding initial data..."
-    docker exec absenlah_fastapi python database/seed.py || true
+    docker exec absenlah_fastapi python -m database.seed || true
 
     record_state "compose_up"
 
@@ -545,7 +541,8 @@ EOF
 #  STEP 5 — Automated Build Pipeline
 # ============================================================================
 detect_stack() {
-    if [[ -f "${INSTALL_ROOT}/frontend/package.json" ]]; then
+    local app_dir="${INSTALL_ROOT}/app"
+    if [[ -f "${app_dir}/package.json" ]] || [[ -f "${app_dir}/frontend/package.json" ]]; then
         echo "expo"
     else
         echo "unknown"
@@ -557,8 +554,9 @@ step_build_mobile() {
     hdr "STEP 5 — Automated Mobile Build"
     init_dirs
 
-    local stack out_dir
+    local stack app_dir out_dir
     stack="$(detect_stack)"
+    app_dir="${INSTALL_ROOT}/app"
     out_dir="${BUILD_OUTPUT_DIR}/$(date +%Y%m%d-%H%M%S)"
     install -d -m 0755 "$out_dir"
 
@@ -566,7 +564,7 @@ step_build_mobile() {
 
     case "$stack" in
         expo)
-            build_expo "$INSTALL_ROOT" "$out_dir"
+            build_expo "$app_dir" "$out_dir"
             ;;
         *)
             err "Unable to detect stack. Use --stack expo"
@@ -612,14 +610,14 @@ build_expo() {
         fi
     fi
 
-    if [[ -n "${EXPO_TOKEN:-}" ]]; then
+    if [[ -n "${EXPO_TOKEN:-}" ]] && false; then
         log "EXPO_TOKEN terdeteksi. Memulai Cloud EAS Build..."
         npx eas-cli build --platform android --profile production --non-interactive --no-wait | tee -a "$LOG_FILE"
         npx eas-cli build:list --limit 5 --json > "${out_dir}/eas-builds.json" 2>>"$LOG_FILE" || true
         echo "EAS builds have been queued. Track them with: eas build:list" > "${out_dir}/README.txt"
         ok "Cloud Build (EAS) submitted. Lihat status di Dashboard Expo Anda."
     else
-        log "EXPO_TOKEN KOSONG. Menggunakan jalur kompilasi PURE LOKAL TANPA EXPO EAS..."
+        log "EXPO_TOKEN KOSONG atau EAS SKIP. Menggunakan jalur kompilasi PURE LOKAL TANPA EXPO EAS..."
 
         export JAVA_HOME="$JAVA_HOME_DIR"
         export ANDROID_HOME="$ANDROID_HOME"
