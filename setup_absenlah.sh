@@ -363,7 +363,6 @@ step_deploy_services() {
 
     if [[ "$BACKEND_ENGINE" == "fastapi" ]]; then
         cat > "$DOCKER_COMPOSE_FILE" <<'YAML'
-version: "3.9"
 services:
   mongodb:
     image: mongo:6.0
@@ -410,7 +409,6 @@ services:
 YAML
     else
         cat > "$DOCKER_COMPOSE_FILE" <<'YAML'
-version: "3.9"
 services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
@@ -598,6 +596,15 @@ build_expo() {
 
     log "Menjalankan install bersih untuk men-generate yarn.lock publik..."
     yarn install
+
+    # FIX: Pastikan assets ada agar expo prebuild tidak gagal
+    log "Memastikan assets dasar tersedia..."
+    mkdir -p assets
+    TINY_PNG="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    if [[ ! -f "assets/icon.png" ]]; then echo "$TINY_PNG" | base64 -d > assets/icon.png; fi
+    if [[ ! -f "assets/splash.png" ]]; then cp assets/icon.png assets/splash.png; fi
+    if [[ ! -f "assets/adaptive-icon.png" ]]; then cp assets/icon.png assets/adaptive-icon.png; fi
+    if [[ ! -f "assets/favicon.png" ]]; then cp assets/icon.png assets/favicon.png; fi
 
     if [[ -f "$ENV_FILE" ]]; then
         source "$ENV_FILE"
