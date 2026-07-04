@@ -15,7 +15,6 @@ router = APIRouter()
 @router.post("/check-in")
 async def check_in(
     log: AttendanceLogCreate,
-    liveness_score: float,
     current_user: dict = Depends(get_current_user)
 ):
     # Security: Use server time for check-in
@@ -23,17 +22,27 @@ async def check_in(
     log.check_in_time = server_now
 
     # Mandatory Liveness Check
-    if liveness_score < 0.8: # Threshold 0.8
+    if log.liveness_score < 0.8: # Threshold 0.8
          raise HTTPException(status_code=400, detail="Liveness detection failed")
 
     # Geofence Validation (unless manual check-in)
     if not log.is_manual:
+        # Auto-detect nearest geofence if none provided
         if not log.geofence_id:
-            raise HTTPException(status_code=400, detail="Geofence ID required for non-manual check-in")
+            all_geofences = await geofences_collection.find({"is_active": True}).to_list(None)
+            found_geofence = None
+            for gf in all_geofences:
+                if await is_within_geofence(log.check_in_lat, log.check_in_long, gf):
+                    found_geofence = gf
+                    break
 
-        geofence = await geofences_collection.find_one({"_id": log.geofence_id})
-        if not geofence or not await is_within_geofence(log.check_in_lat, log.check_in_long, geofence):
-            raise HTTPException(status_code=403, detail="You are outside the geofence area")
+            if not found_geofence:
+                raise HTTPException(status_code=403, detail="No valid geofence found at your location")
+            log.geofence_id = found_geofence["_id"]
+        else:
+            geofence = await geofences_collection.find_one({"_id": log.geofence_id})
+            if not geofence or not await is_within_geofence(log.check_in_lat, log.check_in_long, geofence):
+                raise HTTPException(status_code=403, detail="You are outside the geofence area")
 
     # Check if already checked in today
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -58,6 +67,14 @@ async def check_in(
     await get_or_create_user_stats(current_user["_id"], log.check_in_time.month, log.check_in_time.year)
 
     await attendance_logs_collection.insert_one(log_dict)
+
+    # Update total Discipline Bonus for the month
+    if bonus_disiplin > 0:
+        await user_stats_collection.update_one(
+            {"user_id": current_user["_id"], "month": server_now.month, "year": server_now.year},
+            {"$inc": {"total_bonus_disiplin": bonus_disiplin}}
+        )
+
     return {"message": "Checked in successfully", "log_id": log_dict["_id"]}
 
 @router.post("/check-out/{log_id}")
@@ -113,6 +130,18 @@ async def check_out(log_id: str, update: AttendanceLogUpdate, current_user: dict
     msg = "Checked out successfully"
     if early_departure:
         msg += " (Early Departure detected - Discipline Bonus deducted)"
+        # Revert bonus if previously applied during check-in
+        await user_stats_collection.update_one(
+            {"user_id": current_user["_id"], "month": server_now.month, "year": server_now.year},
+            {"$inc": {"total_bonus_disiplin": -log.get("bonus_disiplin", 0)}}
+        )
+
+    # Update total Overtime for the month
+    if ot_amount > 0:
+        await user_stats_collection.update_one(
+            {"user_id": current_user["_id"], "month": server_now.month, "year": server_now.year},
+            {"$inc": {"total_overtime_earned": ot_amount}}
+        )
 
     return {"message": msg}
 
@@ -129,7 +158,10 @@ async def get_all_logs(admin: dict = Depends(get_current_user)):
     return logs
 
 @router.post("/confirm-arrival/{log_id}")
-async def confirm_arrival(log_id: str, arrival_time: datetime, current_user: dict = Depends(get_current_user)):
+async def confirm_arrival(log_id: str, current_user: dict = Depends(get_current_user)):
+    # Security: Use server time for arrival confirmation
+    arrival_time = datetime.utcnow()
+
     # Handle "latest" log_id
     if log_id == "latest":
         log = await attendance_logs_collection.find_one(

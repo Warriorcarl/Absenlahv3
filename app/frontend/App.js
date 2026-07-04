@@ -10,6 +10,7 @@ import LeaveRequestScreen from './src/screens/LeaveRequestScreen';
 import DivisionLeavesScreen from './src/screens/DivisionLeavesScreen';
 import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import StatsScreen from './src/screens/StatsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 
 const Stack = createStackNavigator();
 
@@ -26,6 +27,7 @@ export default function App() {
         <Stack.Screen name="DivisionLeaves" component={DivisionLeavesScreen} options={{ title: 'Leave Info Center' }} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password' }} />
         <Stack.Screen name="Stats" component={StatsScreen} options={{ title: 'My Statistics' }} />
+        <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

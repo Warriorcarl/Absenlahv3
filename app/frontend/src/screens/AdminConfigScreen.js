@@ -14,6 +14,7 @@ const AdminConfigScreen = () => {
   const [targetUserId, setTargetUserId] = useState('');
   const [configs, setConfigs] = useState([]);
   const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchConfigs();
@@ -36,10 +37,10 @@ const AdminConfigScreen = () => {
   const fetchUsers = async () => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      const response = await axios.get(`${API_URL}/admin/users`, {
+      const response = await axios.get(`${API_URL}/admin/users?search=${search}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUsers(response.data);
+      setUsers(response.data.users || []);
     } catch (error) {
       console.error('Failed to fetch users', error);
     }
@@ -148,7 +149,24 @@ const AdminConfigScreen = () => {
         <Text style={styles.btnText}>Add Site</Text>
       </TouchableOpacity>
 
+      <Text style={[styles.sectionTitle, { marginTop: 40 }]}>Reports</Text>
+      <View style={styles.statsContainer}>
+        <TouchableOpacity style={[styles.saveBtn, { width: '48%', backgroundColor: '#4CAF50' }]} onPress={() => Alert.alert('Export', 'CSV Export Started')}>
+          <Text style={styles.btnText}>Export CSV</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.saveBtn, { width: '48%', backgroundColor: '#F44336' }]} onPress={() => Alert.alert('Export', 'PDF Export Started')}>
+          <Text style={styles.btnText}>Export PDF</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={[styles.sectionTitle, { marginTop: 40 }]}>Reset Device Binding</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Search worker..."
+        value={search}
+        onChangeText={setSearch}
+        onEndEditing={fetchUsers}
+      />
       {users.map(u => (
         <View key={u._id} style={styles.configItem}>
           <Text style={styles.configLabel}>{u.username} ({u.is_hardware_bound ? 'Bound' : 'Free'})</Text>

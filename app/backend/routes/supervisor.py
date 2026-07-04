@@ -54,6 +54,11 @@ async def approve_lateness(
         update_query = {"$inc": {"remaining_emergency_quota": -1}}
 
     if update_query:
+        # Also aggregate fines if any
+        if log.get("lateness_fine_amount", 0) > 0:
+            if "$inc" not in update_query: update_query["$inc"] = {}
+            update_query["$inc"]["total_lateness_fines"] = log["lateness_fine_amount"]
+
         await user_stats_collection.update_one(
             {"user_id": user_id, "month": log_time.month, "year": log_time.year},
             update_query

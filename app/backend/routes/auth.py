@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime
 from typing import Optional
-from schemas.base import UserCreate, UserBase
+from schemas.base import UserCreate, UserBase, LoginRequest
 from services.auth import get_password_hash, verify_password, create_access_token
 from services.google_auth import verify_google_token
 from database.mongodb import users_collection
@@ -30,19 +30,16 @@ async def register(user: UserCreate):
     return {"message": "User registered successfully"}
 
 @router.post("/login")
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    hardware_id: Optional[str] = None
-):
+async def login(req: LoginRequest):
     # Support login via Email or Username
     user = await users_collection.find_one({
         "$or": [
-            {"username": form_data.username},
-            {"email": form_data.username}
+            {"username": req.username},
+            {"email": req.username}
         ]
     })
 
-    if not user or not verify_password(form_data.password, user["password_hash"]):
+    if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -51,18 +48,18 @@ async def login(
 
     # Device Binding Logic
     if user["role"] == "pekerja":
-        if not hardware_id:
+        if not req.hardware_id:
             raise HTTPException(status_code=400, detail="Hardware ID is required for pekerja")
 
         if not user.get("is_hardware_bound"):
             # First time login for pekerja, bind the device
             await users_collection.update_one(
                 {"_id": user["_id"]},
-                {"$set": {"hardware_id": hardware_id, "is_hardware_bound": True, "updated_at": datetime.utcnow()}}
+                {"$set": {"hardware_id": req.hardware_id, "is_hardware_bound": True, "updated_at": datetime.utcnow()}}
             )
         else:
             # Check if hardware_id matches
-            if user.get("hardware_id") != hardware_id:
+            if user.get("hardware_id") != req.hardware_id:
                 raise HTTPException(status_code=403, detail="Account bound to another device")
 
     # Force Password Change for Admin on first login
@@ -104,6 +101,7 @@ async def google_login(token: str, hardware_id: Optional[str] = None):
             "email": email,
             "full_name": google_data.get("name", ""),
             "role": "pekerja",
+            "position": "Staff",
             "password_hash": None,
             "google_id": google_data["sub"],
             "hardware_id": None,

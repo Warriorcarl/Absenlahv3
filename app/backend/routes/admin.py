@@ -60,10 +60,49 @@ async def export_attendance(admin: dict = Depends(get_admin_user)):
         headers={"Content-Disposition": "attachment; filename=attendance.csv"}
     )
 
+@router.get("/export-pdf")
+async def export_attendance_pdf(admin: dict = Depends(get_admin_user)):
+    from database.mongodb import attendance_logs_collection
+    from reportlab.pdfgen import canvas
+    import io
+    from fastapi.responses import StreamingResponse
+
+    logs = await attendance_logs_collection.find().to_list(1000)
+
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer)
+    p.drawString(100, 800, "Absenlah Attendance Report")
+
+    y = 750
+    for log in logs:
+        text = f"User: {log.get('user_id')} | In: {log.get('check_in_time')} | Status: {log.get('status')}"
+        p.drawString(100, y, text)
+        y -= 20
+        if y < 50:
+            p.showPage()
+            y = 800
+
+    p.save()
+    buffer.seek(0)
+    return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=report.pdf"})
+
 @router.get("/users")
-async def list_users(admin: dict = Depends(get_admin_user)):
-    # List all workers for easy management
-    return await users_collection.find({"role": "pekerja"}).to_list(100)
+async def list_users(
+    skip: int = 0,
+    limit: int = 10,
+    search: str = None,
+    admin: dict = Depends(get_admin_user)
+):
+    query = {"role": "pekerja"}
+    if search:
+        query["$or"] = [
+            {"username": {"$regex": search, "$options": "i"}},
+            {"full_name": {"$regex": search, "$options": "i"}}
+        ]
+
+    users = await users_collection.find(query).skip(skip).limit(limit).to_list(limit)
+    total = await users_collection.count_documents(query)
+    return {"users": users, "total": total}
 
 @router.get("/summary")
 async def get_admin_summary(admin: dict = Depends(get_admin_user)):

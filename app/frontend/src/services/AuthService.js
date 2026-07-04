@@ -7,11 +7,11 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 export const login = async (username, password) => {
   try {
     const hardwareId = Device.osInternalBuildId || 'fallback_id';
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('password', password);
-
-    const response = await axios.post(`${API_URL}/auth/login?hardware_id=${hardwareId}`, formData);
+    const response = await axios.post(`${API_URL}/auth/login`, {
+      username,
+      password,
+      hardware_id: hardwareId
+    });
     const { access_token, role } = response.data;
 
     await SecureStore.setItemAsync('userToken', access_token);

@@ -37,6 +37,11 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+    hardware_id: Optional[str] = None
+
 class UserInDB(UserBase):
     id: str = Field(alias="_id")
     hardware_id: Optional[str] = None
@@ -63,6 +68,7 @@ class AttendanceLogBase(BaseModel):
 
 class AttendanceLogCreate(AttendanceLogBase):
     manual_proof_photo_url: Optional[str] = None
+    liveness_score: float = 0
 
 class AttendanceLogUpdate(BaseModel):
     check_out_time: Optional[datetime] = None

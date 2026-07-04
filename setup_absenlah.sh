@@ -527,6 +527,10 @@ EOF
     log "Starting docker compose stack"
     cd "$INSTALL_ROOT"
     docker compose --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" up -d --build --remove-orphans
+
+    log "Seeding initial data..."
+    docker exec absenlah_fastapi python database/seed.py || true
+
     record_state "compose_up"
 
     ok "Deployment complete — https://${DOMAIN}/ ready"

@@ -47,7 +47,7 @@ const DashboardScreen = ({ navigation }) => {
 
     if (!result.canceled) {
       try {
-        await checkIn(null, false, '', result.assets[0].uri);
+        await checkIn(null, false, '', result.assets[0].uri, score);
         Alert.alert('Success', 'Checked in successfully with photo');
         fetchStats();
       } catch (error) {
@@ -117,6 +117,9 @@ const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Stats')}>
           <Text style={styles.menuText}>My Monthly Statistics</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.menuText}>My Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('LeaveRequest')}>
           <Text style={styles.menuText}>{getTranslation('leave_request', lang)}</Text>

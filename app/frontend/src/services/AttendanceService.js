@@ -9,7 +9,7 @@ const getAuthHeader = async () => {
   return { Authorization: `Bearer ${token}` };
 };
 
-export const checkIn = async (geofenceId, isManual = false, manualReason = '', proofPhoto = null) => {
+export const checkIn = async (geofenceId, isManual = false, manualReason = '', proofPhoto = null, livenessScore = 0) => {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') throw 'Location permission denied';
@@ -17,13 +17,14 @@ export const checkIn = async (geofenceId, isManual = false, manualReason = '', p
     const location = await Location.getCurrentPositionAsync({});
     const headers = await getAuthHeader();
 
-    const response = await axios.post(`${API_URL}/attendance/check-in?liveness_score=0.9`, {
+    const response = await axios.post(`${API_URL}/attendance/check-in`, {
       check_in_lat: location.coords.latitude,
       check_in_long: location.coords.longitude,
       geofence_id: geofenceId,
       is_manual: isManual,
       manual_reason: manualReason,
       manual_proof_photo_url: proofPhoto,
+      liveness_score: livenessScore,
       check_in_time: new Date().toISOString()
     }, { headers });
 
