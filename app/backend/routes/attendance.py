@@ -127,7 +127,14 @@ async def get_all_logs(admin: dict = Depends(get_current_user)):
 
 @router.post("/confirm-arrival/{log_id}")
 async def confirm_arrival(log_id: str, arrival_time: datetime, current_user: dict = Depends(get_current_user)):
-    log = await attendance_logs_collection.find_one({"_id": log_id, "user_id": current_user["_id"]})
+    # Handle "latest" log_id
+    if log_id == "latest":
+        log = await attendance_logs_collection.find_one(
+            {"user_id": current_user["_id"]},
+            sort=[("check_in_time", -1)]
+        )
+    else:
+        log = await attendance_logs_collection.find_one({"_id": log_id, "user_id": current_user["_id"]})
     if not log or not log.get("is_manual"):
         raise HTTPException(status_code=400, detail="Not a manual check-in or log not found")
 

@@ -9,7 +9,7 @@ const getAuthHeader = async () => {
   return { Authorization: `Bearer ${token}` };
 };
 
-export const checkIn = async (geofenceId, isManual = false, manualReason = '') => {
+export const checkIn = async (geofenceId, isManual = false, manualReason = '', proofPhoto = null) => {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') throw 'Location permission denied';
@@ -23,6 +23,7 @@ export const checkIn = async (geofenceId, isManual = false, manualReason = '') =
       geofence_id: geofenceId,
       is_manual: isManual,
       manual_reason: manualReason,
+      manual_proof_photo_url: proofPhoto,
       check_in_time: new Date().toISOString()
     }, { headers });
 

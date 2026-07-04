@@ -2,21 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import * as ImagePicker from 'expo-image-picker';
 import { checkIn } from '../services/AttendanceService';
+import { getTranslation } from '../i18n';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const DashboardScreen = ({ navigation }) => {
+  const [lang, setLang] = useState('id');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const handleCheckIn = async () => {
-    try {
-      await checkIn(null); // geofenceId null for default site demo
-      Alert.alert('Success', 'Checked in successfully');
-      fetchStats();
-    } catch (error) {
-      Alert.alert('Error', error);
+    // Check if manual is needed for demo
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return Alert.alert('Error', 'Camera permission needed');
+
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      try {
+        await checkIn(null, false, '', result.assets[0].uri);
+        Alert.alert('Success', 'Checked in successfully with photo');
+        fetchStats();
+      } catch (error) {
+        Alert.alert('Error', error);
+      }
     }
   };
 
@@ -54,38 +68,41 @@ const DashboardScreen = ({ navigation }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.welcome}>Welcome, Pekerja</Text>
+        <Text style={styles.welcome}>Welcome, {getTranslation('worker', lang)}</Text>
         <Text style={styles.date}>{new Date().toDateString()}</Text>
+        <TouchableOpacity onPress={() => setLang(lang === 'en' ? 'id' : 'en')}>
+           <Text style={{color: '#007AFF'}}>Switch to {lang === 'en' ? 'Indonesian' : 'English'}</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Leave Quota</Text>
+          <Text style={styles.statLabel}>{getTranslation('leave_quota', lang)}</Text>
           <Text style={styles.statValue}>{stats?.remaining_leave_quota ?? 0}</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Late Quota</Text>
+          <Text style={styles.statLabel}>{getTranslation('late_quota', lang)}</Text>
           <Text style={styles.statValue}>{stats?.remaining_lateness_quota ?? 0}</Text>
         </View>
       </View>
 
       <TouchableOpacity style={styles.actionButton} onPress={handleCheckIn}>
-        <Text style={styles.actionButtonText}>Check-in Now</Text>
+        <Text style={styles.actionButtonText}>{getTranslation('check_in', lang)}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FF9800' }]} onPress={() => handleConfirmArrival('latest')}>
-        <Text style={styles.actionButtonText}>Confirm Warehouse Arrival</Text>
+        <Text style={styles.actionButtonText}>{getTranslation('arrival_confirm', lang)}</Text>
       </TouchableOpacity>
 
       <View style={styles.menuContainer}>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')}>
-          <Text style={styles.menuText}>My History</Text>
+          <Text style={styles.menuText}>{getTranslation('history', lang)}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('LeaveRequest')}>
-          <Text style={styles.menuText}>Request Leave</Text>
+          <Text style={styles.menuText}>{getTranslation('leave_request', lang)}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('DivisionLeaves')}>
-          <Text style={styles.menuText}>Leave Information Center</Text>
+          <Text style={styles.menuText}>{getTranslation('leave_info', lang)}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

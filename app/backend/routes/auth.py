@@ -34,7 +34,14 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     hardware_id: Optional[str] = None
 ):
-    user = await users_collection.find_one({"username": form_data.username})
+    # Support login via Email or Username
+    user = await users_collection.find_one({
+        "$or": [
+            {"username": form_data.username},
+            {"email": form_data.username}
+        ]
+    })
+
     if not user or not verify_password(form_data.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

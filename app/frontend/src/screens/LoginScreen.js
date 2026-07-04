@@ -15,8 +15,12 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     try {
-      await login(username, password);
-      navigation.replace('Dashboard');
+      const data = await login(username, password);
+      if (data.force_password_change) {
+        navigation.replace('ChangePassword');
+      } else {
+        navigation.replace('Dashboard');
+      }
     } catch (error) {
       Alert.alert('Login Error', error);
     }

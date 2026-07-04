@@ -3,7 +3,7 @@ from schemas.base import LatenessCategory, RequestStatus
 from database.mongodb import attendance_logs_collection, user_stats_collection
 from routes.deps import get_admin_user, get_current_user
 from services.stats import get_or_create_user_stats
-from datetime import datetime
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -40,9 +40,16 @@ async def approve_lateness(
         update_query = {"$inc": {"remaining_leave_quota": -1}}
     elif category == LatenessCategory.EMERGENCY:
         # Requirement: Personal emergency quota is Max 2x per 6 months.
-        # Check current stats for remaining emergency quota.
-        stats = await get_or_create_user_stats(user_id, log_time.month, log_time.year)
-        if stats.get("remaining_emergency_quota", 0) <= 0:
+        # Search all logs for this user in the last 6 months that used emergency category
+        six_months_ago = log_time - timedelta(days=180)
+        from database.mongodb import attendance_logs_collection
+        count = await attendance_logs_collection.count_documents({
+            "user_id": user_id,
+            "lateness_category": LatenessCategory.EMERGENCY,
+            "check_in_time": {"$gte": six_months_ago}
+        })
+
+        if count >= 2:
             raise HTTPException(status_code=400, detail="Personal Emergency Quota exhausted (Max 2 per 6 months)")
         update_query = {"$inc": {"remaining_emergency_quota": -1}}
 
