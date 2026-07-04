@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.backend.schemas.base import LeaveRequestCreate, RequestStatus
-from app.backend.database.mongodb import leave_requests_collection, users_collection
-from app.backend.routes.admin import get_current_user
-from app.backend.routes.supervisor import get_supervisor_user
-from datetime import datetime
+from schemas.base import LeaveRequestCreate, RequestStatus
+from database.mongodb import leave_requests_collection, users_collection
+from routes.deps import get_current_user
+from routes.supervisor import get_supervisor_user
+from datetime import datetime, timedelta
 import uuid
 
 router = APIRouter()
 
-from app.backend.services.config import get_config
+from services.config import get_config
 
 @router.post("/request")
 async def request_leave(leave: LeaveRequestCreate, current_user: dict = Depends(get_current_user)):
@@ -68,3 +68,29 @@ async def approve_leave(leave_id: str, status: RequestStatus, supervisor: dict =
         }}
     )
     return {"message": f"Leave request {status}"}
+
+@router.post("/cancel/{leave_id}")
+async def cancel_leave(leave_id: str, current_user: dict = Depends(get_current_user)):
+    leave = await leave_requests_collection.find_one({"_id": leave_id, "user_id": current_user["_id"]})
+    if not leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+
+    # Requirement: Can cancel until H-1
+    now = datetime.utcnow()
+    h_minus_1 = leave["start_date"].replace(hour=0, minute=0, second=0) - timedelta(days=1)
+
+    if now > h_minus_1:
+        raise HTTPException(status_code=400, detail="Cannot cancel leave after H-1")
+
+    await leave_requests_collection.update_one(
+        {"_id": leave_id},
+        {"$set": {
+            "status": RequestStatus.CANCELLED,
+            "updated_at": now
+        }}
+    )
+
+    # Mock Push Notification to same division
+    print(f"DEBUG: Push notification sent to division {leave['division_id']} regarding cancellation")
+
+    return {"message": "Leave cancelled successfully"}

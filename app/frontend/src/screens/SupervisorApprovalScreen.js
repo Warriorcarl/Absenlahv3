@@ -1,27 +1,60 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const SupervisorApprovalScreen = () => {
-  const pendingLogs = [
-    { id: '1', user: 'Worker A', reason: 'Late (10:15)', type: 'Lateness' },
-    { id: '2', user: 'Worker B', reason: 'Emergency Manual', type: 'Attendance' },
-  ];
+  const [pendingLogs, setPendingLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPending = async () => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      const response = await axios.get(`${API_URL}/supervisor/pending-logs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingLogs(response.data);
+    } catch (error) {
+      console.error('Fetch error', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchPending(); }, []);
+
+  const handleAction = async (logId, category) => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      await axios.post(`${API_URL}/supervisor/approve-lateness/${logId}?category=${category}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      Alert.alert('Success', 'Log processed successfully');
+      fetchPending();
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.detail || 'Action failed');
+    }
+  };
+
+  if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
 
   return (
     <View style={styles.container}>
       <FlatList
         data={pendingLogs}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.user}>{item.user}</Text>
-            <Text style={styles.reason}>{item.reason}</Text>
+            <Text style={styles.user}>{item.full_name || 'Worker'}</Text>
+            <Text style={styles.reason}>Late: {item.lateness_mins} mins</Text>
             <View style={styles.actions}>
-              <TouchableOpacity style={[styles.btn, styles.approveBtn]}>
-                <Text style={styles.btnText}>Approve</Text>
+              <TouchableOpacity onPress={() => handleAction(item._id, 'quota')} style={[styles.btn, styles.approveBtn]}>
+                <Text style={styles.btnText}>Use Quota</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.rejectBtn]}>
-                <Text style={styles.btnText}>Reject</Text>
+              <TouchableOpacity onPress={() => handleAction(item._id, 'leave')} style={[styles.btn, styles.rejectBtn]}>
+                <Text style={styles.btnText}>Potong Libur</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -37,9 +70,9 @@ const styles = StyleSheet.create({
   user: { fontSize: 18, fontWeight: 'bold' },
   reason: { color: '#666', marginVertical: 10 },
   actions: { flexDirection: 'row', justifyContent: 'flex-end' },
-  btn: { padding: 10, borderRadius: 6, marginLeft: 10, width: 100, alignItems: 'center' },
+  btn: { padding: 10, borderRadius: 6, marginLeft: 10, minWidth: 100, alignItems: 'center' },
   approveBtn: { backgroundColor: '#4CAF50' },
-  rejectBtn: { backgroundColor: '#F44336' },
+  rejectBtn: { backgroundColor: '#FF9800' },
   btnText: { color: '#fff', fontWeight: 'bold' }
 });
 

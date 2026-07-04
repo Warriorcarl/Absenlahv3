@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime
 from typing import Optional
-from app.backend.schemas.base import UserCreate, UserBase
-from app.backend.services.auth import get_password_hash, verify_password, create_access_token
-from app.backend.services.google_auth import verify_google_token
-from app.backend.database.mongodb import users_collection
+from schemas.base import UserCreate, UserBase
+from services.auth import get_password_hash, verify_password, create_access_token
+from services.google_auth import verify_google_token
+from database.mongodb import users_collection
+from routes.deps import get_current_user
 import uuid
 
 router = APIRouter()
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
@@ -70,6 +69,18 @@ async def login(
         "token_type": "bearer",
         "force_password_change": force_password_change
     }
+
+@router.post("/change-password")
+async def change_password(new_password: str, current_user: dict = Depends(get_current_user)):
+    await users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$set": {
+            "password_hash": get_password_hash(new_password),
+            "first_login_done": True,
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    return {"message": "Password changed successfully"}
 
 @router.post("/google-login")
 async def google_login(token: str, hardware_id: Optional[str] = None):

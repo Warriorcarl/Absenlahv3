@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime
-from app.backend.schemas.base import AttendanceLogCreate, AttendanceLogUpdate, RequestStatus
-from app.backend.database.mongodb import attendance_logs_collection, user_stats_collection
-from app.backend.routes.admin import get_current_user
-from app.backend.services.attendance import calculate_shift_times, calculate_lateness, calculate_overtime
-from app.backend.services.config import get_config
-from app.backend.services.geofence import is_within_geofence
-from app.backend.services.stats import get_or_create_user_stats
-from app.backend.database.mongodb import geofences_collection
+from schemas.base import AttendanceLogCreate, AttendanceLogUpdate, RequestStatus
+from database.mongodb import attendance_logs_collection, user_stats_collection
+from routes.deps import get_current_user
+from services.attendance import calculate_shift_times, calculate_lateness, calculate_overtime
+from services.config import get_config
+from services.geofence import is_within_geofence
+from services.stats import get_or_create_user_stats
+from database.mongodb import geofences_collection
 import uuid
 
 router = APIRouter()
@@ -86,9 +86,11 @@ async def check_out(log_id: str, update: AttendanceLogUpdate, current_user: dict
             {"_id": log_id},
             {"$set": {"bonus_disiplin": 0, "early_departure": True}}
         )
-        # Quota deduction happens in supervisor categorization or automatically?
-        # Requirement says: Violations deduct the Discipline Bonus and Leave Quota.
-        # We'll flag it for Supervisor review.
+        # Automated deduction for Leave Quota
+        await user_stats_collection.update_one(
+            {"user_id": current_user["_id"], "month": server_now.month, "year": server_now.year},
+            {"$inc": {"remaining_leave_quota": -1}}
+        )
 
     ot_mins, ot_amount = await calculate_overtime(update.check_out_time, log["actual_shift_end"])
 
@@ -110,6 +112,18 @@ async def check_out(log_id: str, update: AttendanceLogUpdate, current_user: dict
         msg += " (Early Departure detected - Discipline Bonus deducted)"
 
     return {"message": msg}
+
+@router.get("/history")
+async def get_history(current_user: dict = Depends(get_current_user)):
+    logs = await attendance_logs_collection.find({"user_id": current_user["_id"]}).sort("check_in_time", -1).to_list(100)
+    return logs
+
+@router.get("/all-logs")
+async def get_all_logs(admin: dict = Depends(get_current_user)):
+    if admin["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    logs = await attendance_logs_collection.find().sort("check_in_time", -1).to_list(100)
+    return logs
 
 @router.post("/confirm-arrival/{log_id}")
 async def confirm_arrival(log_id: str, arrival_time: datetime, current_user: dict = Depends(get_current_user)):

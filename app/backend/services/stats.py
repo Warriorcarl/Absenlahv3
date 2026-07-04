@@ -1,5 +1,5 @@
-from app.backend.database.mongodb import user_stats_collection
-from app.backend.services.config import get_config
+from database.mongodb import user_stats_collection
+from services.config import get_config
 from datetime import datetime
 
 async def get_or_create_user_stats(user_id: str, month: int, year: int):

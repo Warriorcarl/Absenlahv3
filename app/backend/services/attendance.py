@@ -1,5 +1,5 @@
 from datetime import datetime, time, timedelta
-from app.backend.services.config import get_config
+from services.config import get_config
 
 async def calculate_shift_times(check_in_time: datetime):
     shift_start_str = await get_config("SHIFT_START_TIME")

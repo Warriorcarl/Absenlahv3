@@ -1,25 +1,49 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const HistoryScreen = () => {
-  const dummyData = [
-    { id: '1', date: '2023-10-26', status: 'Approved', in: '10:00', out: '20:00' },
-    { id: '2', date: '2023-10-25', status: 'Late', in: '10:15', out: '20:00' },
-  ];
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const token = await SecureStore.getItemAsync('userToken');
+        const response = await axios.get(`${API_URL}/attendance/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setHistory(response.data);
+      } catch (error) {
+        console.error('Failed to fetch history', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, []);
+
+  if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={dummyData}
-        keyExtractor={(item) => item.id}
+        data={history}
+        keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
           <View style={styles.item}>
             <View>
-              <Text style={styles.date}>{item.date}</Text>
-              <Text style={styles.time}>{item.in} - {item.out}</Text>
+              <Text style={styles.date}>{new Date(item.check_in_time).toLocaleDateString()}</Text>
+              <Text style={styles.time}>
+                In: {new Date(item.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {item.check_out_time ? ` - Out: ${new Date(item.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+              </Text>
             </View>
-            <Text style={[styles.status, { color: item.status === 'Late' ? 'red' : 'green' }]}>
-              {item.status}
+            <Text style={[styles.status, { color: item.status === 'approved' ? 'green' : 'orange' }]}>
+              {item.status.toUpperCase()}
             </Text>
           </View>
         )}

@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../.
 from datetime import datetime, timedelta
 import asyncio
 from unittest.mock import patch, AsyncMock
-from app.backend.services.attendance import calculate_shift_times, calculate_lateness, calculate_overtime
+from services.attendance import calculate_shift_times, calculate_lateness, calculate_overtime
 
 # Mock DEFAULT_CONFIG for testing
 MOCK_CONFIG = {

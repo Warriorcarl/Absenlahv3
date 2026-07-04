@@ -1,7 +1,33 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const DashboardScreen = ({ navigation }) => {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = await SecureStore.getItemAsync('userToken');
+        const response = await axios.get(`${API_URL}/worker/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setStats(response.data);
+      } catch (error) {
+        console.error('Failed to fetch stats', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -12,11 +38,11 @@ const DashboardScreen = ({ navigation }) => {
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>Leave Quota</Text>
-          <Text style={styles.statValue}>12</Text>
+          <Text style={styles.statValue}>{stats?.remaining_leave_quota ?? 0}</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>Late Quota</Text>
-          <Text style={styles.statValue}>2</Text>
+          <Text style={styles.statValue}>{stats?.remaining_lateness_quota ?? 0}</Text>
         </View>
       </View>
 
@@ -28,7 +54,7 @@ const DashboardScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')}>
           <Text style={styles.menuText}>My History</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('LeaveRequest')}>
           <Text style={styles.menuText}>Request Leave</Text>
         </TouchableOpacity>
       </View>

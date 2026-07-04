@@ -1,6 +1,6 @@
 import asyncio
-from app.backend.database.mongodb import users_collection
-from app.backend.services.auth import get_password_hash
+from database.mongodb import users_collection
+from services.auth import get_password_hash
 from datetime import datetime
 import uuid
 

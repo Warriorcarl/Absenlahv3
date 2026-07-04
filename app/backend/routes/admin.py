@@ -1,35 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from jose import jwt, JWTError
-from app.backend.services.auth import SECRET_KEY, ALGORITHM
-from app.backend.database.mongodb import users_collection
-from app.backend.routes.auth import oauth2_scheme
+from database.mongodb import users_collection
+from database.mongodb import geofences_collection
+from routes.deps import get_admin_user
 from datetime import datetime
+import uuid
 
 router = APIRouter()
-
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = await users_collection.find_one({"username": username})
-    if user is None:
-        raise credentials_exception
-    return user
-
-async def get_admin_user(current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized")
-    return current_user
 
 @router.post("/reset-device-binding/{user_id}")
 async def reset_device_binding(user_id: str, admin: dict = Depends(get_admin_user)):
@@ -42,3 +18,14 @@ async def reset_device_binding(user_id: str, admin: dict = Depends(get_admin_use
         {"$set": {"hardware_id": None, "is_hardware_bound": False, "updated_at": datetime.utcnow()}}
     )
     return {"message": f"Device binding reset for user {user['username']}"}
+
+@router.post("/geofences")
+async def add_geofence(site: dict, admin: dict = Depends(get_admin_user)):
+    site["_id"] = str(uuid.uuid4())
+    site["created_at"] = datetime.utcnow()
+    await geofences_collection.insert_one(site)
+    return {"message": "Geofence added", "id": site["_id"]}
+
+@router.get("/geofences")
+async def list_geofences(admin: dict = Depends(get_admin_user)):
+    return await geofences_collection.find().to_list(100)

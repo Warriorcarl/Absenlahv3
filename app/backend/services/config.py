@@ -1,4 +1,4 @@
-from app.backend.database.mongodb import config_rules_collection
+from database.mongodb import config_rules_collection
 
 DEFAULT_CONFIG = {
     "SHIFT_START_TIME": "10:00",
