@@ -29,3 +29,19 @@ async def add_geofence(site: dict, admin: dict = Depends(get_admin_user)):
 @router.get("/geofences")
 async def list_geofences(admin: dict = Depends(get_admin_user)):
     return await geofences_collection.find().to_list(100)
+
+@router.get("/users")
+async def list_users(admin: dict = Depends(get_admin_user)):
+    # List all workers for easy management
+    return await users_collection.find({"role": "pekerja"}).to_list(100)
+
+@router.get("/config")
+async def list_configs(admin: dict = Depends(get_admin_user)):
+    from database.mongodb import config_rules_collection
+    return await config_rules_collection.find().to_list(100)
+
+@router.post("/config")
+async def update_config(rule: dict, admin: dict = Depends(get_admin_user)):
+    from services.config import set_config
+    await set_config(rule["key"], rule["value"])
+    return {"message": f"Config {rule['key']} updated"}

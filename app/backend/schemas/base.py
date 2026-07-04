@@ -52,7 +52,7 @@ class ConfigRule(BaseModel):
 
 # --- Attendance Schemas ---
 class AttendanceLogBase(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None # Filled from auth token
     check_in_time: datetime
     check_in_lat: float
     check_in_long: float

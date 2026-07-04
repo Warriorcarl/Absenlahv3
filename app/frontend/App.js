@@ -7,6 +7,7 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import SupervisorApprovalScreen from './src/screens/SupervisorApprovalScreen';
 import AdminConfigScreen from './src/screens/AdminConfigScreen';
 import LeaveRequestScreen from './src/screens/LeaveRequestScreen';
+import DivisionLeavesScreen from './src/screens/DivisionLeavesScreen';
 
 const Stack = createStackNavigator();
 
@@ -20,6 +21,7 @@ export default function App() {
         <Stack.Screen name="SupervisorApproval" component={SupervisorApprovalScreen} options={{ title: 'Pending Approvals' }} />
         <Stack.Screen name="AdminConfig" component={AdminConfigScreen} options={{ title: 'Admin Config' }} />
         <Stack.Screen name="LeaveRequest" component={LeaveRequestScreen} options={{ title: 'Request Leave' }} />
+        <Stack.Screen name="DivisionLeaves" component={DivisionLeavesScreen} options={{ title: 'Leave Info Center' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

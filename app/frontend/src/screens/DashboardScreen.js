@@ -1,13 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { checkIn } from '../services/AttendanceService';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const DashboardScreen = ({ navigation }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const handleCheckIn = async () => {
+    try {
+      await checkIn(null); // geofenceId null for default site demo
+      Alert.alert('Success', 'Checked in successfully');
+      fetchStats();
+    } catch (error) {
+      Alert.alert('Error', error);
+    }
+  };
+
+  const handleConfirmArrival = async (logId) => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      await axios.post(`${API_URL}/attendance/confirm-arrival/${logId}?arrival_time=${new Date().toISOString()}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      Alert.alert('Success', 'Arrival confirmed');
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.detail || 'Confirmation failed');
+    }
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -46,8 +69,12 @@ const DashboardScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.actionButton}>
+      <TouchableOpacity style={styles.actionButton} onPress={handleCheckIn}>
         <Text style={styles.actionButtonText}>Check-in Now</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FF9800' }]} onPress={() => handleConfirmArrival('latest')}>
+        <Text style={styles.actionButtonText}>Confirm Warehouse Arrival</Text>
       </TouchableOpacity>
 
       <View style={styles.menuContainer}>
@@ -56,6 +83,9 @@ const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('LeaveRequest')}>
           <Text style={styles.menuText}>Request Leave</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('DivisionLeaves')}>
+          <Text style={styles.menuText}>Leave Information Center</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
