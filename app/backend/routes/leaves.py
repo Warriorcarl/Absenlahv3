@@ -96,7 +96,19 @@ async def cancel_leave(leave_id: str, current_user: dict = Depends(get_current_u
         }}
     )
 
-    # Mock Push Notification to same division
-    print(f"DEBUG: Push notification sent to division {leave['division_id']} regarding cancellation")
+    # Automated Push Notification to same division
+    from services.notifications import send_push_notification
+    # Find all users in same division with push tokens (placeholder logic for tokens)
+    division_users = await users_collection.find({
+        "division_id": leave["division_id"],
+        "push_token": {"$exists": True}
+    }).to_list(100)
 
-    return {"message": "Leave cancelled successfully"}
+    for user in division_users:
+        await send_push_notification(
+            user["push_token"],
+            "Leave Cancellation",
+            f"{current_user['full_name']} has cancelled their leave."
+        )
+
+    return {"message": "Leave cancelled and staff notified"}

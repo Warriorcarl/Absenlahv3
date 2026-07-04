@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const AdminConfigScreen = () => {
+  const [summary, setSummary] = useState(null);
   const [siteName, setSiteName] = useState('');
   const [radius, setRadius] = useState('');
   const [coords, setCoords] = useState(null);
@@ -17,7 +18,20 @@ const AdminConfigScreen = () => {
   useEffect(() => {
     fetchConfigs();
     fetchUsers();
+    fetchSummary();
   }, []);
+
+  const fetchSummary = async () => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      const response = await axios.get(`${API_URL}/admin/summary`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSummary(response.data);
+    } catch (error) {
+      console.error('Failed to fetch summary', error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -98,6 +112,20 @@ const AdminConfigScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
+      <Text style={styles.sectionTitle}>Daily Summary</Text>
+      {summary && (
+        <View style={styles.statsContainer}>
+           <View style={styles.statBox}>
+             <Text style={styles.statLabel}>Late Today</Text>
+             <Text style={styles.statValue}>{summary.late_today}</Text>
+           </View>
+           <View style={styles.statBox}>
+             <Text style={styles.statLabel}>On Leave</Text>
+             <Text style={styles.statValue}>{summary.on_leave}</Text>
+           </View>
+        </View>
+      )}
+
       <Text style={styles.sectionTitle}>Rules Engine (Live Config)</Text>
       {configs.map(cfg => (
         <View key={cfg.key} style={styles.configItem}>
@@ -139,6 +167,10 @@ const AdminConfigScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+  statsContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
+  statBox: { backgroundColor: '#f0f0f0', padding: 15, borderRadius: 8, width: '48%', alignItems: 'center' },
+  statLabel: { color: '#666', fontSize: 12 },
+  statValue: { fontSize: 20, fontWeight: 'bold', color: '#F44336' },
   sectionTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: '#007AFF' },
   input: { borderWidth: 1, borderColor: '#ddd', padding: 15, borderRadius: 8, marginBottom: 15 },
   configItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8 },

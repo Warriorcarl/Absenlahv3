@@ -38,6 +38,7 @@ const DivisionLeavesScreen = () => {
           <View style={styles.item}>
             <View>
               <Text style={styles.worker}>{item.full_name || 'Coworker'}</Text>
+              <Text style={styles.position}>{item.position || 'Staff'}</Text>
               <Text style={styles.date}>
                 {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
               </Text>
@@ -57,6 +58,7 @@ const styles = StyleSheet.create({
   header: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: '#007AFF' },
   item: { flexDirection: 'row', justifyContent: 'space-between', padding: 15, backgroundColor: '#fff', borderRadius: 8, marginBottom: 10, elevation: 1 },
   worker: { fontSize: 16, fontWeight: 'bold' },
+  position: { color: '#007AFF', fontSize: 12, marginBottom: 5 },
   date: { color: '#666', marginTop: 5 },
   statusBox: { justifyContent: 'center' },
   status: { fontWeight: 'bold', color: '#4CAF50' }

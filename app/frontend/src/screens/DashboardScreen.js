@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
 import { checkIn } from '../services/AttendanceService';
 import { getTranslation } from '../i18n';
+import CameraLiveness from '../components/CameraLiveness';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -12,8 +13,14 @@ const DashboardScreen = ({ navigation }) => {
   const [lang, setLang] = useState('id');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showCamera, setShowCamera] = useState(false);
 
   const handleCheckIn = async () => {
+     setShowCamera(true);
+  };
+
+  const onLivenessVerified = async (score) => {
+    setShowCamera(false);
     // Check if manual is needed for demo
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') return Alert.alert('Error', 'Camera permission needed');
@@ -65,6 +72,10 @@ const DashboardScreen = ({ navigation }) => {
 
   if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
 
+  if (showCamera) {
+    return <CameraLiveness onVerified={onLivenessVerified} />;
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -97,6 +108,9 @@ const DashboardScreen = ({ navigation }) => {
       <View style={styles.menuContainer}>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')}>
           <Text style={styles.menuText}>{getTranslation('history', lang)}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Stats')}>
+          <Text style={styles.menuText}>My Monthly Statistics</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('LeaveRequest')}>
           <Text style={styles.menuText}>{getTranslation('leave_request', lang)}</Text>

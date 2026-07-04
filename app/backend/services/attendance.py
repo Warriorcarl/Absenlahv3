@@ -2,6 +2,11 @@ from datetime import datetime, time, timedelta
 from services.config import get_config
 
 async def calculate_shift_times(check_in_time: datetime):
+    # Holiday/Weekend Check
+    if check_in_time.weekday() >= 5: # Saturday=5, Sunday=6
+         # Optional: Different logic for weekends if needed
+         pass
+
     shift_start_str = await get_config("SHIFT_START_TIME")
     shift_end_str = await get_config("SHIFT_END_TIME")
 

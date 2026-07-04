@@ -70,3 +70,19 @@ async def approve_lateness(
     )
 
     return {"message": "Lateness approved and quota updated"}
+
+@router.post("/bulk-approve-lateness")
+async def bulk_approve_lateness(
+    log_ids: list[str],
+    category: LatenessCategory,
+    supervisor: dict = Depends(get_supervisor_user)
+):
+    results = []
+    for log_id in log_ids:
+        try:
+            res = await approve_lateness(log_id, category, supervisor)
+            results.append({"id": log_id, "status": "success"})
+        except Exception as e:
+            results.append({"id": log_id, "status": "failed", "error": str(e)})
+
+    return {"results": results}

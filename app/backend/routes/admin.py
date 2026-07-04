@@ -30,10 +30,66 @@ async def add_geofence(site: dict, admin: dict = Depends(get_admin_user)):
 async def list_geofences(admin: dict = Depends(get_admin_user)):
     return await geofences_collection.find().to_list(100)
 
+@router.get("/export-attendance")
+async def export_attendance(admin: dict = Depends(get_admin_user)):
+    from database.mongodb import attendance_logs_collection
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+
+    logs = await attendance_logs_collection.find().to_list(1000)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["User ID", "Check In", "Check Out", "Lateness (m)", "OT (m)", "Status"])
+
+    for log in logs:
+        writer.writerow([
+            log.get("user_id"),
+            log.get("check_in_time"),
+            log.get("check_out_time"),
+            log.get("lateness_mins"),
+            log.get("overtime_mins"),
+            log.get("status")
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=attendance.csv"}
+    )
+
 @router.get("/users")
 async def list_users(admin: dict = Depends(get_admin_user)):
     # List all workers for easy management
     return await users_collection.find({"role": "pekerja"}).to_list(100)
+
+@router.get("/summary")
+async def get_admin_summary(admin: dict = Depends(get_admin_user)):
+    from database.mongodb import users_collection, attendance_logs_collection, leave_requests_collection
+    from datetime import datetime
+
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    total_workers = await users_collection.count_documents({"role": "pekerja"})
+    present_today = await attendance_logs_collection.count_documents({"check_in_time": {"$gte": today_start}})
+    late_today = await attendance_logs_collection.count_documents({
+        "check_in_time": {"$gte": today_start},
+        "lateness_mins": {"$gt": 0}
+    })
+    on_leave = await leave_requests_collection.count_documents({
+        "status": "approved",
+        "start_date": {"$lte": today_start},
+        "end_date": {"$gte": today_start}
+    })
+
+    return {
+        "total_workers": total_workers,
+        "present_today": present_today,
+        "late_today": late_today,
+        "on_leave": on_leave
+    }
 
 @router.get("/config")
 async def list_configs(admin: dict = Depends(get_admin_user)):
