@@ -28,31 +28,25 @@ async def calculate_lateness(check_in_time: datetime, actual_start: datetime):
         return 0, await get_config("ON_TIME_BONUS_AMOUNT"), 0
 
     lateness_mins = int((check_in_time - actual_start).total_seconds() / 60)
-
-    # Progressive Lateness Fines
     fines_config = await get_config("LATENESS_FINES_JSON")
-    fine_amount = 0
 
-    # Logic for matching lateness_mins to fines_config
-    # 10:11-10:30 (11-30 mins), etc.
-    if lateness_mins <= 30:
-        fine_amount = fines_config.get("10:11-10:30", 5000)
-    elif lateness_mins <= 60:
-        fine_amount = fines_config.get("10:31-11:00", 10000)
-    elif lateness_mins <= 90:
-        fine_amount = fines_config.get("11:01-11:30", 15000)
-    elif lateness_mins <= 120:
-        fine_amount = fines_config.get("11:31-12:00", 20000)
-    elif lateness_mins <= 150:
-        fine_amount = fines_config.get("12:01-12:30", 30000)
-    elif lateness_mins <= 180:
-        fine_amount = fines_config.get("12:31-13:00", 40000)
-    elif lateness_mins <= 210:
-        fine_amount = fines_config.get("13:01-13:30", 50000)
+    # Fully Dynamic Logic based on Config Keys
+    # Keys like "30", "60", "90" represent max mins for that tier
+    sorted_tiers = sorted([int(k) for k in fines_config.keys() if k.isdigit()])
+
+    fine_amount = 0
+    last_tier = 0
+    for tier in sorted_tiers:
+        if lateness_mins <= tier:
+            fine_amount = fines_config.get(str(tier))
+            break
+        last_tier = tier
     else:
-        # +10k per 30 mins after 13:30 (210 mins late)
-        extra_30m = (lateness_mins - 210 + 29) // 30
-        fine_amount = 50000 + (extra_30m * fines_config.get("after_13:30", 10000))
+        # After last digit tier
+        after_val = fines_config.get("after", 10000)
+        base_fine = fines_config.get(str(last_tier), 50000)
+        extra_30m = (lateness_mins - last_tier + 29) // 30
+        fine_amount = base_fine + (extra_30m * after_val)
 
     return lateness_mins, 0, fine_amount
 
@@ -65,27 +59,20 @@ async def calculate_overtime(check_out_time: datetime, actual_end: datetime):
 
     ot_mins = int((check_out_time - actual_end).total_seconds() / 60)
     ot_config = await get_config("OVERTIME_RATES_JSON")
-    ot_amount = 0
 
-    if ot_mins <= 30:
-        ot_amount = ot_config.get("30", 5000)
-    elif ot_mins <= 60:
-        ot_amount = ot_config.get("60", 10000)
-    elif ot_mins <= 90:
-        ot_amount = ot_config.get("90", 15000)
-    elif ot_mins <= 120:
-        ot_amount = ot_config.get("120", 20000)
-    elif ot_mins <= 150:
-        ot_amount = ot_config.get("150", 30000)
-    elif ot_mins <= 180:
-        ot_amount = ot_config.get("180", 30000)
-    elif ot_mins <= 210:
-        ot_amount = ot_config.get("210", 40000)
-    elif ot_mins <= 240:
-        ot_amount = ot_config.get("240", 50000)
+    sorted_tiers = sorted([int(k) for k in ot_config.keys() if k.isdigit()])
+
+    ot_amount = 0
+    last_tier = 0
+    for tier in sorted_tiers:
+        if ot_mins <= tier:
+            ot_amount = ot_config.get(str(tier))
+            break
+        last_tier = tier
     else:
-        # +10k per 30 mins after 240 mins
-        extra_30m = (ot_mins - 240 + 29) // 30
-        ot_amount = 50000 + (extra_30m * ot_config.get("after_240", 10000))
+        after_val = ot_config.get("after", 10000)
+        base_ot = ot_config.get(str(last_tier), 50000)
+        extra_30m = (ot_mins - last_tier + 29) // 30
+        ot_amount = base_ot + (extra_30m * after_val)
 
     return ot_mins, ot_amount

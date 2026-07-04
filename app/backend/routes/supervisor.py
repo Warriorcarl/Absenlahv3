@@ -39,6 +39,11 @@ async def approve_lateness(
     elif category == LatenessCategory.LEAVE:
         update_query = {"$inc": {"remaining_leave_quota": -1}}
     elif category == LatenessCategory.EMERGENCY:
+        # Requirement: Personal emergency quota is Max 2x per 6 months.
+        # Check current stats for remaining emergency quota.
+        stats = await get_or_create_user_stats(user_id, log_time.month, log_time.year)
+        if stats.get("remaining_emergency_quota", 0) <= 0:
+            raise HTTPException(status_code=400, detail="Personal Emergency Quota exhausted (Max 2 per 6 months)")
         update_query = {"$inc": {"remaining_emergency_quota": -1}}
 
     if update_query:

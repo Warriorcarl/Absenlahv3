@@ -22,9 +22,15 @@ async def request_leave(leave: LeaveRequestCreate, current_user: dict = Depends(
         if (shift_start_today - now).total_seconds() < 2 * 3600:
             raise HTTPException(status_code=400, detail="Leave requests must be submitted at least 2 hours before shift start")
 
-    # Blocking logic: check if another approved leave in the same division on same date
+    # Blocking logic: check if another approved leave in the same POSITION on same date
+    # Requirement: Auto-reject if another worker in the same position is already on leave.
+
+    # We need to find all users with the same position
+    same_position_users = await users_collection.find({"position": current_user["position"]}).to_list(None)
+    user_ids = [u["_id"] for u in same_position_users]
+
     existing_leave = await leave_requests_collection.find_one({
-        "division_id": current_user["division_id"],
+        "user_id": {"$in": user_ids},
         "status": RequestStatus.APPROVED,
         "start_date": {"$lte": leave.end_date},
         "end_date": {"$gte": leave.start_date}

@@ -1,8 +1,8 @@
 import sys
 import os
 
-# Add project root to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+# Add app/backend to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from datetime import datetime, timedelta
 import asyncio
@@ -17,21 +17,21 @@ MOCK_CONFIG = {
     "ON_TIME_BONUS_AMOUNT": 20000,
     "OVERTIME_START_THRESHOLD_MINS": 1,
     "LATENESS_FINES_JSON": {
-        "10:11-10:30": 5000,
-        "10:31-11:00": 10000,
-        "after_13:30": 10000
+        "30": 5000,
+        "60": 10000,
+        "after": 10000
     },
     "OVERTIME_RATES_JSON": {
         "30": 5000,
         "60": 10000,
-        "after_240": 10000
+        "after": 10000
     }
 }
 
 async def mock_get_config(key):
     return MOCK_CONFIG.get(key)
 
-@patch("app.backend.services.attendance.get_config", side_effect=mock_get_config)
+@patch("services.attendance.get_config", side_effect=mock_get_config)
 async def test_logic(mock_cfg):
     print("Testing Attendance Logic...")
 

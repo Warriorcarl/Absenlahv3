@@ -14,6 +14,7 @@ async def seed_admin():
             "email": "admin@absenlah.local",
             "full_name": "System Administrator",
             "role": "admin",
+            "position": "Administrator",
             "password_hash": get_password_hash("admin123"),
             "hardware_id": None,
             "is_hardware_bound": False,

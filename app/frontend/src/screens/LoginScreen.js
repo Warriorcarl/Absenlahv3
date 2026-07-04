@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { login } from '../services/AuthService';
+import { login, googleLogin } from '../services/AuthService';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with actual ID
+    });
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -12,6 +19,23 @@ const LoginScreen = ({ navigation }) => {
       navigation.replace('Dashboard');
     } catch (error) {
       Alert.alert('Login Error', error);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      await googleLogin(userInfo.idToken);
+      navigation.replace('Dashboard');
+    } catch (error) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // user cancelled the login flow
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        // operation (e.g. sign in) is in progress already
+      } else {
+        Alert.alert('Google Error', error.message);
+      }
     }
   };
 
@@ -36,7 +60,7 @@ const LoginScreen = ({ navigation }) => {
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.googleButton}>
+      <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
         <Text style={styles.googleButtonText}>Sign in with Google</Text>
       </TouchableOpacity>
     </View>

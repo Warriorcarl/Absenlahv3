@@ -32,6 +32,7 @@ class UserBase(BaseModel):
     full_name: str
     role: UserRole
     division_id: Optional[str] = None
+    position: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
