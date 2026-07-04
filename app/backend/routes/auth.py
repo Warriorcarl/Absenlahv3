@@ -74,6 +74,7 @@ async def login(
     return {
         "access_token": access_token,
         "token_type": "bearer",
+        "role": user["role"],
         "force_password_change": force_password_change
     }
 
@@ -127,4 +128,4 @@ async def google_login(token: str, hardware_id: Optional[str] = None):
             raise HTTPException(status_code=403, detail="Account bound to another device")
 
     access_token = create_access_token(data={"sub": user["username"], "role": user["role"], "user_id": user["_id"]})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "role": user["role"]}

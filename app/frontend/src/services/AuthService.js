@@ -12,9 +12,10 @@ export const login = async (username, password) => {
     formData.append('password', password);
 
     const response = await axios.post(`${API_URL}/auth/login?hardware_id=${hardwareId}`, formData);
-    const { access_token } = response.data;
+    const { access_token, role } = response.data;
 
     await SecureStore.setItemAsync('userToken', access_token);
+    await SecureStore.setItemAsync('userRole', role || 'pekerja');
     return response.data;
   } catch (error) {
     throw error.response?.data?.detail || 'Login failed';
@@ -25,9 +26,10 @@ export const googleLogin = async (token) => {
   try {
     const hardwareId = Device.osInternalBuildId || 'fallback_id';
     const response = await axios.post(`${API_URL}/auth/google-login?token=${token}&hardware_id=${hardwareId}`);
-    const { access_token } = response.data;
+    const { access_token, role } = response.data;
 
     await SecureStore.setItemAsync('userToken', access_token);
+    await SecureStore.setItemAsync('userRole', role || 'pekerja');
     return response.data;
   } catch (error) {
     throw error.response?.data?.detail || 'Google Login failed';

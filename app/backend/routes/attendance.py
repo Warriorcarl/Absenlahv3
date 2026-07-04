@@ -86,10 +86,13 @@ async def check_out(log_id: str, update: AttendanceLogUpdate, current_user: dict
             {"_id": log_id},
             {"$set": {"bonus_disiplin": 0, "early_departure": True}}
         )
-        # Automated deduction for Leave Quota
+        # Automated deduction for Leave Quota and Early Departure Quota
         await user_stats_collection.update_one(
             {"user_id": current_user["_id"], "month": server_now.month, "year": server_now.year},
-            {"$inc": {"remaining_leave_quota": -1}}
+            {"$inc": {
+                "remaining_leave_quota": -1,
+                "remaining_early_departure_quota": -1
+            }}
         )
 
     ot_mins, ot_amount = await calculate_overtime(update.check_out_time, log["actual_shift_end"])

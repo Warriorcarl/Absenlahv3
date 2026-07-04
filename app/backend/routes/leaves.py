@@ -30,7 +30,7 @@ async def request_leave(leave: LeaveRequestCreate, current_user: dict = Depends(
     user_ids = [u["_id"] for u in same_position_users]
 
     existing_leave = await leave_requests_collection.find_one({
-        "user_id": {"$in": user_ids},
+        "user_id": {"$in": user_ids, "$ne": current_user["_id"]},
         "status": RequestStatus.APPROVED,
         "start_date": {"$lte": leave.end_date},
         "end_date": {"$gte": leave.start_date}

@@ -3452,6 +3452,11 @@ expo-device@~5.9.3:
   dependencies:
     ua-parser-js "^0.7.33"
 
+expo-face-detector@^13.0.2:
+  version "13.0.2"
+  resolved "https://registry.yarnpkg.com/expo-face-detector/-/expo-face-detector-13.0.2.tgz#c8482e74a7cadb6e368f79c64809b146489e189b"
+  integrity sha512-HxpPdS+/SOilGDGSDSgvtQsncsx1lEV8HwvUKUeegb5v0h8I8Bcnz2nll5xcrJ8+Vk/DQkMr5i0fTGLAUHiXLw==
+
 expo-file-system@~16.0.0, expo-file-system@~16.0.9:
   version "16.0.9"
   resolved "https://registry.yarnpkg.com/expo-file-system/-/expo-file-system-16.0.9.tgz#cbd6c4b228b60a6b6c71fd1b91fe57299fb24da7"

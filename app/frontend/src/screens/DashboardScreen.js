@@ -14,6 +14,21 @@ const DashboardScreen = ({ navigation }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCamera, setShowCamera] = useState(false);
+  const [userRole, setUserRole] = useState('pekerja');
+
+  const fetchStats = async () => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      const response = await axios.get(`${API_URL}/worker/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch stats', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCheckIn = async () => {
      setShowCamera(true);
@@ -54,20 +69,11 @@ const DashboardScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const token = await SecureStore.getItemAsync('userToken');
-        const response = await axios.get(`${API_URL}/worker/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setStats(response.data);
-      } catch (error) {
-        console.error('Failed to fetch stats', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
+    // Simplified: Role should come from login response or token decode
+    SecureStore.getItemAsync('userRole').then(role => {
+      if (role) setUserRole(role);
+    });
   }, []);
 
   if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
@@ -118,6 +124,18 @@ const DashboardScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('DivisionLeaves')}>
           <Text style={styles.menuText}>{getTranslation('leave_info', lang)}</Text>
         </TouchableOpacity>
+
+        {userRole === 'supervisor' || userRole === 'admin' ? (
+          <TouchableOpacity style={[styles.menuItem, {backgroundColor: '#E8F5E9'}]} onPress={() => navigation.navigate('SupervisorApproval')}>
+            <Text style={[styles.menuText, {color: '#2E7D32', fontWeight: 'bold'}]}>Supervisor Approvals</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {userRole === 'admin' ? (
+          <TouchableOpacity style={[styles.menuItem, {backgroundColor: '#F3E5F5'}]} onPress={() => navigation.navigate('AdminConfig')}>
+            <Text style={[styles.menuText, {color: '#7B1FA2', fontWeight: 'bold'}]}>Admin Configuration</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </ScrollView>
   );
