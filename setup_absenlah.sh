@@ -238,10 +238,10 @@ step_clone_repository() {
     init_dirs
 
     local repo_url
-    repo_url="$(ask "GitHub repository URL (HTTPS or SSH)" "${ABSENLAH_REPO_URL:-}")"
+    repo_url="$(ask "GitHub repository URL (HTTPS or SSH)" "https://github.com/Warriorcarl/Absenlahv3.git")"
 
     local branch
-    branch="$(ask "Branch to check out" "main")"
+    branch="$(ask "Branch to check out" "feat/phase-1-schema-design-6243968822157953537")"
 
     local target_dir="${INSTALL_ROOT}/app"
 
@@ -297,10 +297,10 @@ step_configure_env() {
     fi
 
     local domain
-    domain="$(ask "Public domain (contoh: absenlah.example.com)" "absenlah.local")"
+    domain="$(ask "Public domain (contoh: warriorcarl.my.id)" "warriorcarl.my.id")"
 
     local admin_email
-    admin_email="$(ask "Admin email (untuk Let's Encrypt / Admin User)" "admin@${domain}")"
+    admin_email="$(ask "Admin email (untuk Let's Encrypt / Admin User)" "warriorcarl@yahoo.com")"
 
     local jwt_secret
     if confirm "Auto-generate strong JWT secret?" "Y"; then
@@ -310,9 +310,24 @@ step_configure_env() {
         jwt_secret="$(ask_secret "JWT secret")"
     fi
 
+    local google_client_id
+    google_client_id="$(ask "Google Client ID (hit Enter to skip)" "")"
+    local google_client_secret
+    google_client_secret="$(ask "Google Client Secret (hit Enter to skip)" "")"
+
     local expo_token
     read -r -s -p "$(echo -e "${C_BOLD}EXPO_TOKEN (Opsional, kosongkan [Enter] jika ingin BARE LOCAL BUILD)${C_RESET}: ")" expo_token
     echo ""
+
+    local build_type
+    build_type="$(ask "Pilih Output Build [1] APK (Preview/Debug), [2] AAB (Production/Play Store)" "1")"
+    if [[ "$build_type" == "2" ]]; then
+        EXPO_BUILD_FORMAT="aab"
+        EXPO_BUILD_PROFILE="production"
+    else
+        EXPO_BUILD_FORMAT="apk"
+        EXPO_BUILD_PROFILE="preview"
+    fi
 
     local tz
     tz="$(ask "Server timezone" "Asia/Jakarta")"
@@ -332,8 +347,12 @@ DOMAIN=${domain}
 TZ=${tz}
 ADMIN_EMAIL=${admin_email}
 JWT_SECRET=${jwt_secret}
+GOOGLE_CLIENT_ID=${google_client_id}
+GOOGLE_CLIENT_SECRET=${google_client_secret}
 ENABLE_SSL=${enable_ssl}
 EXPO_TOKEN=${expo_token}
+EXPO_BUILD_FORMAT=${EXPO_BUILD_FORMAT}
+EXPO_BUILD_PROFILE=${EXPO_BUILD_PROFILE}
 
 # Backend Config (FastAPI)
 MONGO_URL=mongodb://mongodb:27017/absenlah
@@ -610,6 +629,7 @@ build_expo() {
         source "$ENV_FILE"
         {
             echo "EXPO_PUBLIC_BACKEND_URL=${EXPO_PUBLIC_BACKEND_URL:-https://${DOMAIN}}"
+            echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${GOOGLE_CLIENT_ID:-}"
         } > .env.production
 
         if [[ -n "${EXPO_TOKEN:-}" ]]; then
@@ -617,9 +637,9 @@ build_expo() {
         fi
     fi
 
-    if [[ -n "${EXPO_TOKEN:-}" ]] && false; then
-        log "EXPO_TOKEN terdeteksi. Memulai Cloud EAS Build..."
-        npx eas-cli build --platform android --profile production --non-interactive --no-wait | tee -a "$LOG_FILE"
+    if [[ -n "${EXPO_TOKEN:-}" ]]; then
+        log "EXPO_TOKEN terdeteksi. Memulai Cloud EAS Build (${EXPO_BUILD_FORMAT:-apk})..."
+        npx eas-cli build --platform android --profile ${EXPO_BUILD_PROFILE:-preview} --non-interactive --no-wait | tee -a "$LOG_FILE"
         npx eas-cli build:list --limit 5 --json > "${out_dir}/eas-builds.json" 2>>"$LOG_FILE" || true
         echo "EAS builds have been queued. Track them with: eas build:list" > "${out_dir}/README.txt"
         ok "Cloud Build (EAS) submitted. Lihat status di Dashboard Expo Anda."
