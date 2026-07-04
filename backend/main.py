@@ -28,7 +28,7 @@ async def enforce_2h_rule():
             {"$set": {"status": "rejected", "manual_arrival_violation": True, "updated_at": now}}
         )
         await user_stats_collection.update_one(
-            {"user_id": log["user_id"], "month": now.month, "year": now.year},
+            {"user_id": log["user_id"], "month": log["check_in_time"].month, "year": log["check_in_time"].year},
             {"$inc": {"remaining_leave_quota": -1}}
         )
 

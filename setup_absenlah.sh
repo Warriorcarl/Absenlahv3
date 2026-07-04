@@ -638,7 +638,10 @@ build_expo() {
     fi
 
     if [[ -n "${EXPO_TOKEN:-}" ]]; then
-        log "EXPO_TOKEN terdeteksi. Memulai Cloud EAS Build (${EXPO_BUILD_FORMAT:-apk})..."
+        log "EXPO_TOKEN terdeteksi. Melakukan Inisialisasi Proyek EAS..."
+        npx eas-cli project:init --non-interactive | tee -a "$LOG_FILE" || true
+
+        log "Memulai Cloud EAS Build (${EXPO_BUILD_FORMAT:-apk})..."
         npx eas-cli build --platform android --profile ${EXPO_BUILD_PROFILE:-preview} --non-interactive --no-wait | tee -a "$LOG_FILE"
         npx eas-cli build:list --limit 5 --json > "${out_dir}/eas-builds.json" 2>>"$LOG_FILE" || true
         echo "EAS builds have been queued. Track them with: eas build:list" > "${out_dir}/README.txt"

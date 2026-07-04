@@ -187,7 +187,7 @@ async def confirm_arrival(log_id: str, current_user: dict = Depends(get_current_
         violation = True
 
     await attendance_logs_collection.update_one(
-        {"_id": log_id},
+        {"_id": log["_id"]},
         {"$set": {
             "arrival_at_warehouse_time": arrival_time,
             "manual_arrival_violation": violation,
@@ -196,10 +196,32 @@ async def confirm_arrival(log_id: str, current_user: dict = Depends(get_current_
     )
 
     if violation:
-        # Automated deduction for Leave Quota (Potong Jatah Libur)
+        # Automated deduction for Leave Quota (Potong Jatah Libur) + Lateness Fine
+        # Calculate lateness fine based on arrival time at warehouse
+        from services.config import get_config
+        from services.attendance import calculate_lateness
+
+        shift_start_str = await get_config("SHIFT_START_TIME")
+        h, m = map(int, shift_start_str.split(":"))
+        standard_start = arrival_time.replace(hour=h, minute=m, second=0, microsecond=0)
+
+        _, _, lateness_fine = await calculate_lateness(arrival_time, standard_start)
+
+        await attendance_logs_collection.update_one(
+            {"_id": log["_id"]},
+            {"$set": {
+                "lateness_fine_amount": lateness_fine,
+                "status": "rejected",
+                "bonus_disiplin": 0
+            }}
+        )
+
         await user_stats_collection.update_one(
             {"user_id": current_user["_id"], "month": log["check_in_time"].month, "year": log["check_in_time"].year},
-            {"$inc": {"remaining_leave_quota": -1}}
+            {"$inc": {
+                "remaining_leave_quota": -1,
+                "total_lateness_fines": lateness_fine
+            }}
         )
-        return {"message": "Arrival confirmed with violation (took >2 hours or after 14:00). Potong Jatah Libur applied."}
+        return {"message": f"Arrival confirmed with violation. Fine Rp{lateness_fine} and Potong Jatah Libur applied."}
     return {"message": "Arrival confirmed on time"}
