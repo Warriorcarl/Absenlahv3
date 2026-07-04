@@ -13,6 +13,7 @@ Represents employees (Pekerja), Supervisors, and Administrators.
 - `full_name`: String
 - `role`: Enum ('admin', 'supervisor', 'pekerja')
 - `division_id`: FK -> `divisions.id`
+- `position`: String (e.g., 'Courier', 'Staff')
 - `google_id`: String (Optional, for OAuth)
 - `hardware_id`: String (Unique, bound on first login)
 - `is_hardware_bound`: Boolean (Default: false)
@@ -137,11 +138,12 @@ When an `attendance_log` is flagged as late, a Supervisor must approve the categ
 3. **Emergency Quota (Jatah Darurat Pribadi)**: Max 2x per 6 months. Requires photo proof. Deducts from `user_stats.remaining_emergency_quota`.
 
 ### Manual Check-in (2-Hour Rule)
-- For `is_manual = True` logs, the system captures `check_in_time`.
+- For `is_manual = True` logs, the system captures `check_in_time` using server time.
 - `arrival_at_warehouse_time` must be updated via a specific endpoint upon physical arrival.
 - Logic: If `arrival_at_warehouse_time` - `check_in_time` > 2 hours OR `arrival_at_warehouse_time` > 14:00:
     - Automatically apply lateness fine.
     - Deduct Leave Quota (Potong Jatah Libur).
+- **Automation**: A background task periodically scans for check-ins exceeding the 2-hour deadline without arrival confirmation.
 
 ### Dynamic Shift Logic
 - Default: 10:00 AM - 08:00 PM.

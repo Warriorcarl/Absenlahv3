@@ -243,7 +243,7 @@ step_clone_repository() {
     local branch
     branch="$(ask "Branch to check out" "main")"
 
-    local target_dir="${INSTALL_ROOT}/app"
+    local target_dir="${INSTALL_ROOT}"
 
     install -d -m 0755 "$INSTALL_ROOT"
     install -d -m 0755 "$BUILD_OUTPUT_DIR"
@@ -258,12 +258,17 @@ step_clone_repository() {
         git -C "$target_dir" pull --ff-only origin "$branch"
     else
         log "Cloning $repo_url (branch: $branch) into $target_dir"
+        # Temp dir for cloning
+        local tmp_clone="/tmp/absenlah_clone"
+        rm -rf "$tmp_clone"
         if [[ -n "${GITHUB_TOKEN:-}" ]] && [[ "$repo_url" == https://* ]]; then
             local authed_url="${repo_url/https:\/\//https://${GITHUB_TOKEN}@}"
-            git clone --branch "$branch" --depth 1 "$authed_url" "$target_dir"
+            git clone --branch "$branch" --depth 1 "$authed_url" "$tmp_clone"
         else
-            git clone --branch "$branch" --depth 1 "$repo_url" "$target_dir"
+            git clone --branch "$branch" --depth 1 "$repo_url" "$tmp_clone"
         fi
+        cp -r "${tmp_clone}/." "$target_dir/"
+        rm -rf "$tmp_clone"
         record_state "repo_cloned"
     fi
 
@@ -380,7 +385,7 @@ services:
 
   fastapi:
     build:
-      context: ./app/backend
+      context: ./backend
     container_name: absenlah_fastapi
     restart: unless-stopped
     depends_on:
@@ -540,8 +545,7 @@ EOF
 #  STEP 5 — Automated Build Pipeline
 # ============================================================================
 detect_stack() {
-    local app_dir="${INSTALL_ROOT}/app"
-    if [[ -f "${app_dir}/package.json" ]] || [[ -f "${app_dir}/frontend/package.json" ]]; then
+    if [[ -f "${INSTALL_ROOT}/frontend/package.json" ]]; then
         echo "expo"
     else
         echo "unknown"
@@ -553,9 +557,8 @@ step_build_mobile() {
     hdr "STEP 5 — Automated Mobile Build"
     init_dirs
 
-    local stack app_dir out_dir
+    local stack out_dir
     stack="$(detect_stack)"
-    app_dir="${INSTALL_ROOT}/app"
     out_dir="${BUILD_OUTPUT_DIR}/$(date +%Y%m%d-%H%M%S)"
     install -d -m 0755 "$out_dir"
 
@@ -563,7 +566,7 @@ step_build_mobile() {
 
     case "$stack" in
         expo)
-            build_expo "$app_dir" "$out_dir"
+            build_expo "$INSTALL_ROOT" "$out_dir"
             ;;
         *)
             err "Unable to detect stack. Use --stack expo"

@@ -42,6 +42,9 @@ class LoginRequest(BaseModel):
     password: str
     hardware_id: Optional[str] = None
 
+class ChangePasswordRequest(BaseModel):
+    new_password: str
+
 class UserInDB(UserBase):
     id: str = Field(alias="_id")
     hardware_id: Optional[str] = None

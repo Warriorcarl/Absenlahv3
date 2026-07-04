@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime
 from typing import Optional
-from schemas.base import UserCreate, UserBase, LoginRequest
+from schemas.base import UserCreate, UserBase, LoginRequest, ChangePasswordRequest
 from services.auth import get_password_hash, verify_password, create_access_token
 from services.google_auth import verify_google_token
 from database.mongodb import users_collection
@@ -76,11 +76,11 @@ async def login(req: LoginRequest):
     }
 
 @router.post("/change-password")
-async def change_password(new_password: str, current_user: dict = Depends(get_current_user)):
+async def change_password(req: ChangePasswordRequest, current_user: dict = Depends(get_current_user)):
     await users_collection.update_one(
         {"_id": current_user["_id"]},
         {"$set": {
-            "password_hash": get_password_hash(new_password),
+            "password_hash": get_password_hash(req.new_password),
             "first_login_done": True,
             "updated_at": datetime.utcnow()
         }}
