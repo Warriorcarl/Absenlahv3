@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from routes import auth, attendance, supervisor, leaves, admin, uploads
 from database.mongodb import user_stats_collection, attendance_logs_collection
@@ -49,6 +50,14 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Absenlah API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Root endpoint
 @app.get("/")
