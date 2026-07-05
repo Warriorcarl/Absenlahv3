@@ -63,5 +63,16 @@ If you see `developer_error` in the mobile app:
 - The **Android Client ID** allows the Android app to talk to Google services.
 - The **Web Client ID** is the "audience" for the identity token. Without it, the backend cannot securely verify who is logging in.
 
+### Q: Detailed steps to resolve DEVELOPER_ERROR?
+**A:** If you see `DEVELOPER_ERROR` on your phone:
+1. **Match IDs:** Go to Google Cloud Console. Ensure your **Android Client ID** and **Web Client ID** are in the **SAME project**.
+2. **SHA-1 Check:**
+   - Open your terminal and run `eas credentials -p android`.
+   - Find the "SHA1 Fingerprint" for your production build.
+   - Go to Google Cloud Console -> Credentials -> Edit your Android Client ID.
+   - Ensure the SHA-1 there matches EXACTLY.
+3. **App ID Check:** Ensure the Package Name in the Android Client ID is `com.absenlah.app`.
+4. **Web ID in Script:** Ensure the `GOOGLE_WEB_CLIENT_ID` you gave to `setup_absenlah.sh` is the **Web Application** ID, not the Android one.
+
 ## 6. Setup Script
 When running `setup_absenlah.sh`, provide the **Web Client ID** when prompted for `GOOGLE_WEB_CLIENT_ID`.

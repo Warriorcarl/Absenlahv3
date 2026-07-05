@@ -311,7 +311,7 @@ step_configure_env() {
     fi
 
     local google_client_id
-    google_client_id="$(ask "Google WEB Client ID (from Cloud Console - Required for Auth)" "")"
+    google_client_id="$(ask "Google WEB Client ID (Must be type 'Web Application' for token verification)" "")"
     local google_client_secret
     google_client_secret="$(ask "Google Client Secret (hit Enter to skip)" "")"
 
@@ -627,10 +627,18 @@ build_expo() {
 
     if [[ -f "$ENV_FILE" ]]; then
         source "$ENV_FILE"
+        local backend_url="${EXPO_PUBLIC_BACKEND_URL:-https://${DOMAIN}}"
+        local google_id="${GOOGLE_CLIENT_ID:-}"
+
+        # Write to both .env and .env.production for maximum compatibility
         {
-            echo "EXPO_PUBLIC_BACKEND_URL=${EXPO_PUBLIC_BACKEND_URL:-https://${DOMAIN}}"
-            echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${GOOGLE_CLIENT_ID:-}"
-        } > .env.production
+            echo "EXPO_PUBLIC_BACKEND_URL=${backend_url}"
+            echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${google_id}"
+        } | tee .env > .env.production
+
+        # Export for current shell session (used by EAS CLI)
+        export EXPO_PUBLIC_BACKEND_URL="${backend_url}"
+        export EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID="${google_id}"
 
         if [[ -n "${EXPO_TOKEN:-}" ]]; then
             export EXPO_TOKEN="${EXPO_TOKEN}"
