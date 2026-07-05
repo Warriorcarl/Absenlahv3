@@ -70,7 +70,7 @@ async def approve_lateness(
             "status": RequestStatus.APPROVED,
             "lateness_category": category,
             "approved_by": supervisor["_id"],
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now()
         }}
     )
 

@@ -18,7 +18,7 @@ async def check_in(
     current_user: dict = Depends(get_current_user)
 ):
     # Security: Use server time for check-in
-    server_now = datetime.utcnow()
+    server_now = datetime.now()
     log.check_in_time = server_now
 
     # Mandatory Liveness Check
@@ -45,7 +45,7 @@ async def check_in(
                 raise HTTPException(status_code=403, detail="You are outside the geofence area")
 
     # Check if already checked in today
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     if await attendance_logs_collection.find_one({"user_id": current_user["_id"], "check_in_time": {"$gte": today_start}}):
         raise HTTPException(status_code=400, detail="Already checked in today")
 
@@ -61,7 +61,7 @@ async def check_in(
     log_dict["bonus_disiplin"] = bonus_disiplin
     log_dict["lateness_fine_amount"] = lateness_fine
     log_dict["status"] = RequestStatus.PENDING if lateness_mins > 0 or log.is_manual else RequestStatus.APPROVED
-    log_dict["created_at"] = datetime.utcnow()
+    log_dict["created_at"] = datetime.now()
 
     # Ensure stats are initialized for the month
     await get_or_create_user_stats(current_user["_id"], log.check_in_time.month, log.check_in_time.year)
@@ -80,7 +80,7 @@ async def check_in(
 @router.post("/check-out/{log_id}")
 async def check_out(log_id: str, update: AttendanceLogUpdate, current_user: dict = Depends(get_current_user)):
     # Security: Use server time for check-out
-    server_now = datetime.utcnow()
+    server_now = datetime.now()
     update.check_out_time = server_now
 
     log = await attendance_logs_collection.find_one({"_id": log_id, "user_id": current_user["_id"]})
@@ -123,7 +123,7 @@ async def check_out(log_id: str, update: AttendanceLogUpdate, current_user: dict
             "overtime_mins": ot_mins,
             "overtime_amount": ot_amount,
             "early_departure": early_departure,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now()
         }}
     )
 
@@ -160,7 +160,7 @@ async def get_all_logs(admin: dict = Depends(get_current_user)):
 @router.post("/confirm-arrival/{log_id}")
 async def confirm_arrival(log_id: str, current_user: dict = Depends(get_current_user)):
     # Security: Use server time for arrival confirmation
-    arrival_time = datetime.utcnow()
+    arrival_time = datetime.now()
 
     # Handle "latest" log_id
     if log_id == "latest":
@@ -191,7 +191,7 @@ async def confirm_arrival(log_id: str, current_user: dict = Depends(get_current_
         {"$set": {
             "arrival_at_warehouse_time": arrival_time,
             "manual_arrival_violation": violation,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now()
         }}
     )
 

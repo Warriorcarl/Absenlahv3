@@ -12,7 +12,7 @@ async def enforce_2h_rule():
     from datetime import datetime, timedelta
     from services.config import get_config
 
-    now = datetime.utcnow()
+    now = datetime.now()
     max_h = await get_config("MANUAL_CHECKIN_MAX_ARRIVAL_TIME_HOURS")
     deadline = now - timedelta(hours=max_h)
 
@@ -70,7 +70,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 @app.get("/worker/stats")
 async def get_worker_stats(current_user: dict = Depends(get_current_user)):
     from services.stats import get_or_create_user_stats
-    now = datetime.utcnow()
+    now = datetime.now()
     stats = await get_or_create_user_stats(current_user["_id"], now.month, now.year)
     return stats
 

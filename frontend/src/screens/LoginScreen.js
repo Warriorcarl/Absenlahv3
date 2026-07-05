@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { login, googleLogin } from '../services/AuthService';
+import { extractErrorMessage } from '../utils/ErrorHelper';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 const LoginScreen = ({ navigation }) => {
@@ -8,8 +9,10 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
+    const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    console.log('Configuring Google Sign-In with Web Client ID:', webClientId);
     GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+      webClientId: webClientId || 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
     });
   }, []);
 
@@ -22,7 +25,7 @@ const LoginScreen = ({ navigation }) => {
         navigation.replace('Dashboard');
       }
     } catch (error) {
-      Alert.alert('Login Error', error);
+      Alert.alert('Login Error', extractErrorMessage(error));
     }
   };
 

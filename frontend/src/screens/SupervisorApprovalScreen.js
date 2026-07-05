@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { extractErrorMessage } from '../utils/ErrorHelper';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -34,7 +35,7 @@ const SupervisorApprovalScreen = () => {
       Alert.alert('Success', 'Log processed successfully');
       fetchPending();
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.detail || 'Action failed');
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 

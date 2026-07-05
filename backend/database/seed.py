@@ -30,8 +30,8 @@ async def seed_admin():
                 "hardware_id": None,
                 "is_hardware_bound": False,
                 "first_login_done": False, # Force change on first login
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "created_at": datetime.now(),
+                "updated_at": datetime.now()
             }
             await users_collection.insert_one(admin_user)
             print("SUCCESS: Admin 'administrator' seeded with password 'admin123'")

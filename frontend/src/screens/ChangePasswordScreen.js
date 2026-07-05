@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { extractErrorMessage } from '../utils/ErrorHelper';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -11,13 +12,14 @@ const ChangePasswordScreen = ({ navigation }) => {
   const handleChangePassword = async () => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      await axios.post(`${API_URL}/auth/change-password?new_password=${newPassword}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.post(`${API_URL}/auth/change-password`,
+        { new_password: newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       Alert.alert('Success', 'Password changed successfully');
       navigation.replace('Dashboard');
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.detail || 'Update failed');
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 

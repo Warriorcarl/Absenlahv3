@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { extractErrorMessage } from '../utils/ErrorHelper';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -22,7 +23,7 @@ const LeaveRequestScreen = ({ navigation }) => {
       Alert.alert('Success', 'Leave request submitted');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.detail || 'Submission failed');
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 

@@ -22,9 +22,18 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.absenlah.app",
-      "usesCleartextTraffic": true
+      "package": "com.absenlah.app"
     },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }

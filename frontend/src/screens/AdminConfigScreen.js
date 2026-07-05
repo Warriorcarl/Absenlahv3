@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert 
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
+import { extractErrorMessage } from '../utils/ErrorHelper';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -67,7 +68,7 @@ const AdminConfigScreen = () => {
       Alert.alert('Success', `${key} updated`);
       fetchConfigs();
     } catch (error) {
-      Alert.alert('Error', 'Update failed');
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 
@@ -95,19 +96,20 @@ const AdminConfigScreen = () => {
       }, { headers: { Authorization: `Bearer ${token}` } });
       Alert.alert('Success', 'Geofence added');
     } catch (error) {
-      Alert.alert('Error', 'Failed to add geofence');
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 
-  const handleResetBinding = async () => {
+  const handleResetBinding = async (userId) => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      await axios.post(`${API_URL}/admin/reset-device-binding/${targetUserId}`, {}, {
+      await axios.post(`${API_URL}/admin/reset-device-binding/${userId}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       Alert.alert('Success', 'Binding reset');
+      fetchUsers();
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.detail || 'Reset failed');
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 
@@ -172,7 +174,7 @@ const AdminConfigScreen = () => {
           <Text style={styles.configLabel}>{u.username} ({u.is_hardware_bound ? 'Bound' : 'Free'})</Text>
           <TouchableOpacity
             style={[styles.smallBtn, { backgroundColor: u.is_hardware_bound ? '#F44336' : '#ccc' }]}
-            onPress={() => { setTargetUserId(u._id); handleResetBinding(); }}
+            onPress={() => handleResetBinding(u._id)}
             disabled={!u.is_hardware_bound}
           >
             <Text style={styles.smallBtnText}>Reset</Text>

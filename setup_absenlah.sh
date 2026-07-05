@@ -311,7 +311,7 @@ step_configure_env() {
     fi
 
     local google_client_id
-    google_client_id="$(ask "Google WEB Client ID (Must be type 'Web Application' for token verification)" "")"
+    google_client_id="$(ask "Google WEB Client ID (Must be 'Web Application' type - REQUIRED)" "")"
     local google_client_secret
     google_client_secret="$(ask "Google Client Secret (hit Enter to skip)" "")"
 
@@ -333,10 +333,13 @@ step_configure_env() {
     tz="$(ask "Server timezone" "Asia/Jakarta")"
 
     local enable_ssl
+    local protocol="https"
     if confirm "Enable HTTPS via Let's Encrypt (requires domain + port 80/443)?" "Y"; then
         enable_ssl="true"
+        protocol="https"
     else
         enable_ssl="false"
+        protocol="http"
     fi
 
     local tmp_env
@@ -358,13 +361,20 @@ EXPO_BUILD_PROFILE=${EXPO_BUILD_PROFILE}
 MONGO_URL=mongodb://mongodb:27017/absenlah
 
 # Expo frontend (build-time)
-EXPO_PUBLIC_BACKEND_URL=https://${domain}
+EXPO_PUBLIC_BACKEND_URL=${protocol}://${domain}
 EOF
     install -m 0600 "$tmp_env" "$ENV_FILE"
     rm -f "$tmp_env"
     chown root:root "$ENV_FILE"
     record_state "env_written"
     ok "Wrote $ENV_FILE (mode 0600) — Backend: $BACKEND_ENGINE"
+
+    # --- Domain Validation ---
+    if [[ "$domain" == "localhost" ]] || [[ "$domain" == "127.0.0.1" ]]; then
+        warn "PERINGATAN: Domain diatur ke '$domain'."
+        warn "Aplikasi Android TIDAK AKAN bisa menghubungi backend kecuali menggunakan domain publik atau IP LAN statis."
+        warn "Pastikan EXPO_PUBLIC_BACKEND_URL dapat diakses dari smartphone Anda."
+    fi
 }
 
 # ============================================================================
@@ -647,9 +657,18 @@ build_expo() {
 
     if [[ -n "${EXPO_TOKEN:-}" ]]; then
         log "EXPO_TOKEN terdeteksi. Melakukan Inisialisasi Proyek EAS..."
-        # FIX: Set owner explicitly in app.json to avoid account ambiguity
-        if command_exists jq && [[ -f "app.json" ]]; then
-            jq '.expo.owner = "warriorcarl"' app.json > app.json.tmp && mv app.json.tmp app.json
+        # FIX: Set owner explicitly and inject env vars for Cloud Builds
+        if command_exists jq; then
+            if [[ -f "app.json" ]]; then
+                jq '.expo.owner = "warriorcarl"' app.json > app.json.tmp && mv app.json.tmp app.json
+            fi
+            if [[ -f "eas.json" ]]; then
+                log "Menyuntikkan variabel lingkungan ke eas.json..."
+                # FIX: Use |= to update the build object without losing other top-level keys
+                jq --arg url "$backend_url" --arg gid "$google_id" \
+                   '.build |= map_values(.env = {"EXPO_PUBLIC_BACKEND_URL": $url, "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": $gid})' \
+                   eas.json > eas.json.tmp && mv eas.json.tmp eas.json
+            fi
         fi
 
         npx eas-cli project:init --non-interactive --force | tee -a "$LOG_FILE" || true

@@ -15,14 +15,14 @@ async def reset_device_binding(user_id: str, admin: dict = Depends(get_admin_use
 
     await users_collection.update_one(
         {"_id": user_id},
-        {"$set": {"hardware_id": None, "is_hardware_bound": False, "updated_at": datetime.utcnow()}}
+        {"$set": {"hardware_id": None, "is_hardware_bound": False, "updated_at": datetime.now()}}
     )
     return {"message": f"Device binding reset for user {user['username']}"}
 
 @router.post("/geofences")
 async def add_geofence(site: dict, admin: dict = Depends(get_admin_user)):
     site["_id"] = str(uuid.uuid4())
-    site["created_at"] = datetime.utcnow()
+    site["created_at"] = datetime.now()
     await geofences_collection.insert_one(site)
     return {"message": "Geofence added", "id": site["_id"]}
 
@@ -109,7 +109,7 @@ async def get_admin_summary(admin: dict = Depends(get_admin_user)):
     from database.mongodb import users_collection, attendance_logs_collection, leave_requests_collection
     from datetime import datetime
 
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     total_workers = await users_collection.count_documents({"role": "pekerja"})
     present_today = await attendance_logs_collection.count_documents({"check_in_time": {"$gte": today_start}})

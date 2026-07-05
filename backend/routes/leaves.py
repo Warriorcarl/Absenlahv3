@@ -13,7 +13,7 @@ from services.config import get_config
 @router.post("/request")
 async def request_leave(leave: LeaveRequestCreate, current_user: dict = Depends(get_current_user)):
     # Requirement: Must submit >= 2 hours before shift
-    now = datetime.utcnow()
+    now = datetime.now()
     shift_start_str = await get_config("SHIFT_START_TIME")
     h, m = map(int, shift_start_str.split(":"))
     shift_start_today = now.replace(hour=h, minute=m, second=0, microsecond=0)
@@ -44,7 +44,7 @@ async def request_leave(leave: LeaveRequestCreate, current_user: dict = Depends(
     leave_dict["user_id"] = current_user["_id"]
     leave_dict["division_id"] = current_user["division_id"]
     leave_dict["status"] = RequestStatus.PENDING
-    leave_dict["created_at"] = datetime.utcnow()
+    leave_dict["created_at"] = datetime.now()
 
     await leave_requests_collection.insert_one(leave_dict)
     return {"message": "Leave request submitted", "leave_id": leave_dict["_id"]}
@@ -70,7 +70,7 @@ async def approve_leave(leave_id: str, status: RequestStatus, supervisor: dict =
         {"$set": {
             "status": status,
             "approved_by": supervisor["_id"],
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now()
         }}
     )
     return {"message": f"Leave request {status}"}
@@ -82,7 +82,7 @@ async def cancel_leave(leave_id: str, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Leave request not found")
 
     # Requirement: Can cancel until H-1
-    now = datetime.utcnow()
+    now = datetime.now()
     h_minus_1 = leave["start_date"].replace(hour=0, minute=0, second=0) - timedelta(days=1)
 
     if now > h_minus_1:

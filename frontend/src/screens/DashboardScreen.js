@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
-import { checkIn } from '../services/AttendanceService';
+import { extractErrorMessage } from '../utils/ErrorHelper';
+import { checkIn, checkOut } from '../services/AttendanceService';
 import { getTranslation } from '../i18n';
 import CameraLiveness from '../components/CameraLiveness';
 
@@ -12,21 +13,37 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 const DashboardScreen = ({ navigation }) => {
   const [lang, setLang] = useState('id');
   const [stats, setStats] = useState(null);
+  const [todayLog, setTodayLog] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [userRole, setUserRole] = useState('pekerja');
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      const response = await axios.get(`${API_URL}/worker/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setStats(response.data);
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const statsRes = await axios.get(`${API_URL}/worker/stats`, { headers });
+      setStats(statsRes.data);
+
+      const historyRes = await axios.get(`${API_URL}/attendance/history`, { headers });
+      const logs = historyRes.data;
+      if (logs.length > 0) {
+        const lastLog = logs[0];
+        const logDate = new Date(lastLog.check_in_time).toDateString();
+        const todayDate = new Date().toDateString();
+        if (logDate === todayDate) {
+          setTodayLog(lastLog);
+        } else {
+          setTodayLog(null);
+        }
+      }
     } catch (error) {
-      console.error('Failed to fetch stats', error);
+      console.error('Failed to fetch data', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -36,7 +53,6 @@ const DashboardScreen = ({ navigation }) => {
 
   const onLivenessVerified = async (score) => {
     setShowCamera(false);
-    // Check if manual is needed for demo
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') return Alert.alert('Error', 'Camera permission needed');
 
@@ -48,11 +64,25 @@ const DashboardScreen = ({ navigation }) => {
     if (!result.canceled) {
       try {
         await checkIn(null, false, '', result.assets[0].uri, score);
-        Alert.alert('Success', 'Checked in successfully with photo');
-        fetchStats();
+        Alert.alert('Success', 'Checked in successfully');
+        fetchData();
       } catch (error) {
-        Alert.alert('Error', error);
+        Alert.alert('Error', extractErrorMessage(error));
       }
+    }
+  };
+
+  const handleCheckOut = async () => {
+    if (!todayLog) return;
+    try {
+      setLoading(true);
+      await checkOut(todayLog._id);
+      Alert.alert('Success', 'Checked out successfully');
+      fetchData();
+    } catch (error) {
+      Alert.alert('Error', extractErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,13 +94,12 @@ const DashboardScreen = ({ navigation }) => {
       });
       Alert.alert('Success', 'Arrival confirmed');
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.detail || 'Confirmation failed');
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 
   useEffect(() => {
-    fetchStats();
-    // Simplified: Role should come from login response or token decode
+    fetchData();
     SecureStore.getItemAsync('userRole').then(role => {
       if (role) setUserRole(role);
     });
@@ -83,7 +112,10 @@ const DashboardScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
+    >
       <View style={styles.header}>
         <Text style={styles.welcome}>Welcome, {getTranslation('worker', lang)}</Text>
         <Text style={styles.date}>{new Date().toDateString()}</Text>
@@ -103,13 +135,25 @@ const DashboardScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.actionButton} onPress={handleCheckIn}>
-        <Text style={styles.actionButtonText}>{getTranslation('check_in', lang)}</Text>
-      </TouchableOpacity>
+      {!todayLog ? (
+        <TouchableOpacity style={styles.actionButton} onPress={handleCheckIn}>
+          <Text style={styles.actionButtonText}>{getTranslation('check_in', lang)}</Text>
+        </TouchableOpacity>
+      ) : !todayLog.check_out_time ? (
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#F44336' }]} onPress={handleCheckOut}>
+          <Text style={styles.actionButtonText}>{getTranslation('check_out', lang) || 'Check Out'}</Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}>
+          <Text style={styles.actionButtonText}>Sudah Absen Pulang</Text>
+        </View>
+      )}
 
-      <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FF9800' }]} onPress={() => handleConfirmArrival('latest')}>
-        <Text style={styles.actionButtonText}>{getTranslation('arrival_confirm', lang)}</Text>
-      </TouchableOpacity>
+      {todayLog && todayLog.is_manual && !todayLog.arrival_at_warehouse_time && (
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FF9800' }]} onPress={() => handleConfirmArrival(todayLog._id)}>
+          <Text style={styles.actionButtonText}>{getTranslation('arrival_confirm', lang)}</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.menuContainer}>
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')}>

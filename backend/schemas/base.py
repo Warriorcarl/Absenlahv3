@@ -42,6 +42,10 @@ class LoginRequest(BaseModel):
     password: str
     hardware_id: Optional[str] = None
 
+class GoogleLoginRequest(BaseModel):
+    token: str
+    hardware_id: Optional[str] = None
+
 class ChangePasswordRequest(BaseModel):
     new_password: str
 

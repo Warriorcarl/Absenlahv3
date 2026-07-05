@@ -28,7 +28,7 @@ async def get_or_create_user_stats(user_id: str, month: int, year: int):
             "total_lateness_fines": 0,
             "total_overtime_earned": 0,
             "total_bonus_disiplin": 0,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now()
         }
         await user_stats_collection.insert_one(stats)
     return stats

@@ -67,12 +67,19 @@ If you see `developer_error` in the mobile app:
 **A:** If you see `DEVELOPER_ERROR` on your phone:
 1. **Match IDs:** Go to Google Cloud Console. Ensure your **Android Client ID** and **Web Client ID** are in the **SAME project**.
 2. **SHA-1 Check:**
-   - Open your terminal and run `eas credentials -p android`.
-   - Find the "SHA1 Fingerprint" for your production build.
-   - Go to Google Cloud Console -> Credentials -> Edit your Android Client ID.
-   - Ensure the SHA-1 there matches EXACTLY.
-3. **App ID Check:** Ensure the Package Name in the Android Client ID is `com.absenlah.app`.
+   - You must add the SHA-1 fingerprint for EVERY build type you use.
+   - **EAS Build:** Run `eas credentials -p android`. Copy the SHA1 from the build profile.
+   - **Local Build:** Run `keytool -list -v -keystore ~/.android/debug.keystore` (password: `android`).
+   - **Play Store:** If you opted into Play Store Signing, get the SHA-1 from the Play Console -> Setup -> App integrity.
+   - Add ALL these SHA-1s as separate Android Client IDs in your project.
+3. **App ID Check:** Ensure the Package Name in the Android Client ID is exactly `com.absenlah.app`.
 4. **Web ID in Script:** Ensure the `GOOGLE_WEB_CLIENT_ID` you gave to `setup_absenlah.sh` is the **Web Application** ID, not the Android one.
+
+### Q: Why does the app say "Server Unreachable"?
+**A:** This usually means the app cannot talk to the backend:
+1. **Localhost:** If you set the domain to `localhost` or `127.0.0.1`, Android cannot see it. Use a public domain or static LAN IP.
+2. **Firewall:** Ensure port 80/443 is open on your server.
+3. **SSL:** If you are using HTTP instead of HTTPS, ensure `usesCleartextTraffic` is enabled in `app.json` (which it is by default in recent versions of this code).
 
 ## 6. Setup Script
 When running `setup_absenlah.sh`, provide the **Web Client ID** when prompted for `GOOGLE_WEB_CLIENT_ID`.
