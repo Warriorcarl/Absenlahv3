@@ -1,7 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import { logout } from '../services/AuthService';
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }) => {
+  const handleLogout = async () => {
+    await logout();
+    navigation.replace('Login');
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.profileHeader}>
@@ -24,7 +30,7 @@ const ProfileScreen = () => {
         <Text style={styles.infoValue}>Logistics</Text>
       </View>
 
-      <TouchableOpacity style={styles.logoutBtn}>
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </View>

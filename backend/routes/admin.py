@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from database.mongodb import users_collection
-from database.mongodb import geofences_collection
+from database.mongodb import geofences_collection, serializable
 from routes.deps import get_admin_user
 from datetime import datetime
 import uuid
@@ -28,7 +28,8 @@ async def add_geofence(site: dict, admin: dict = Depends(get_admin_user)):
 
 @router.get("/geofences")
 async def list_geofences(admin: dict = Depends(get_admin_user)):
-    return await geofences_collection.find().to_list(100)
+    geofences = await geofences_collection.find().to_list(100)
+    return serializable(geofences)
 
 @router.get("/export-attendance")
 async def export_attendance(admin: dict = Depends(get_admin_user)):
@@ -102,7 +103,7 @@ async def list_users(
 
     users = await users_collection.find(query).skip(skip).limit(limit).to_list(limit)
     total = await users_collection.count_documents(query)
-    return {"users": users, "total": total}
+    return {"users": serializable(users), "total": total}
 
 @router.get("/summary")
 async def get_admin_summary(admin: dict = Depends(get_admin_user)):
@@ -133,7 +134,8 @@ async def get_admin_summary(admin: dict = Depends(get_admin_user)):
 @router.get("/config")
 async def list_configs(admin: dict = Depends(get_admin_user)):
     from database.mongodb import config_rules_collection
-    return await config_rules_collection.find().to_list(100)
+    configs = await config_rules_collection.find().to_list(100)
+    return serializable(configs)
 
 @router.post("/config")
 async def update_config(rule: dict, admin: dict = Depends(get_admin_user)):

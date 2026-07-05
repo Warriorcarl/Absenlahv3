@@ -1,4 +1,4 @@
-from database.mongodb import user_stats_collection
+from database.mongodb import user_stats_collection, serializable
 from services.config import get_config
 from datetime import datetime
 
@@ -31,4 +31,4 @@ async def get_or_create_user_stats(user_id: str, month: int, year: int):
             "updated_at": datetime.now()
         }
         await user_stats_collection.insert_one(stats)
-    return stats
+    return serializable(stats)

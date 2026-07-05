@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from schemas.base import LeaveRequestCreate, RequestStatus
-from database.mongodb import leave_requests_collection, users_collection
+from database.mongodb import leave_requests_collection, users_collection, serializable
 from routes.deps import get_current_user
 from routes.supervisor import get_supervisor_user
 from datetime import datetime, timedelta
@@ -42,7 +42,7 @@ async def request_leave(leave: LeaveRequestCreate, current_user: dict = Depends(
     leave_dict = leave.dict()
     leave_dict["_id"] = str(uuid.uuid4())
     leave_dict["user_id"] = current_user["_id"]
-    leave_dict["division_id"] = current_user["division_id"]
+    leave_dict["division_id"] = current_user.get("division_id", "default")
     leave_dict["status"] = RequestStatus.PENDING
     leave_dict["created_at"] = datetime.now()
 
@@ -52,13 +52,16 @@ async def request_leave(leave: LeaveRequestCreate, current_user: dict = Depends(
 @router.get("/my-history")
 async def get_my_leaves(current_user: dict = Depends(get_current_user)):
     leaves = await leave_requests_collection.find({"user_id": current_user["_id"]}).to_list(100)
-    return leaves
+    return serializable(leaves)
 
 @router.get("/division-leaves")
 async def get_division_leaves(current_user: dict = Depends(get_current_user)):
     # Visibility logic: ONLY same division
-    leaves = await leave_requests_collection.find({"division_id": current_user["division_id"]}).to_list(100)
-    return leaves
+    div_id = current_user.get("division_id")
+    if not div_id:
+        return []
+    leaves = await leave_requests_collection.find({"division_id": div_id}).to_list(100)
+    return serializable(leaves)
 
 @router.post("/approve/{leave_id}")
 async def approve_leave(leave_id: str, status: RequestStatus, supervisor: dict = Depends(get_supervisor_user)):

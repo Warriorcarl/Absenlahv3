@@ -20,6 +20,7 @@ async def register(user: UserCreate):
     user_dict = user.dict()
     user_dict["password_hash"] = get_password_hash(user_dict.pop("password"))
     user_dict["_id"] = str(uuid.uuid4())
+    user_dict["division_id"] = user_dict.get("division_id") or "default"
     user_dict["hardware_id"] = None
     user_dict["is_hardware_bound"] = False
     user_dict["first_login_done"] = False

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from schemas.base import LatenessCategory, RequestStatus
-from database.mongodb import attendance_logs_collection, user_stats_collection
+from database.mongodb import attendance_logs_collection, user_stats_collection, serializable
 from routes.deps import get_admin_user, get_current_user
 from services.stats import get_or_create_user_stats
 from datetime import datetime, timedelta
@@ -15,7 +15,7 @@ async def get_supervisor_user(current_user: dict = Depends(get_current_user)):
 @router.get("/pending-logs")
 async def get_pending_logs(supervisor: dict = Depends(get_supervisor_user)):
     logs = await attendance_logs_collection.find({"status": RequestStatus.PENDING}).to_list(100)
-    return logs
+    return serializable(logs)
 
 @router.post("/approve-lateness/{log_id}")
 async def approve_lateness(
@@ -42,7 +42,6 @@ async def approve_lateness(
         # Requirement: Personal emergency quota is Max 2x per 6 months.
         # Search all logs for this user in the last 6 months that used emergency category
         six_months_ago = log_time - timedelta(days=180)
-        from database.mongodb import attendance_logs_collection
         count = await attendance_logs_collection.count_documents({
             "user_id": user_id,
             "lateness_category": LatenessCategory.EMERGENCY,

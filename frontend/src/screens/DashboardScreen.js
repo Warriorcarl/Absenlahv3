@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, RefreshControl, Dimensions } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { extractErrorMessage } from '../utils/ErrorHelper';
 import { checkIn, checkOut } from '../services/AttendanceService';
 import { getTranslation } from '../i18n';
 import CameraLiveness from '../components/CameraLiveness';
+import MapView, { Marker } from 'react-native-maps';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -18,6 +20,8 @@ const DashboardScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [userRole, setUserRole] = useState('pekerja');
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [location, setLocation] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -29,6 +33,10 @@ const DashboardScreen = ({ navigation }) => {
 
       const historyRes = await axios.get(`${API_URL}/attendance/history`, { headers });
       const logs = historyRes.data;
+
+      const loc = await Location.getCurrentPositionAsync({});
+      setLocation(loc.coords);
+
       if (logs.length > 0) {
         const lastLog = logs[0];
         const logDate = new Date(lastLog.check_in_time).toDateString();
@@ -103,6 +111,9 @@ const DashboardScreen = ({ navigation }) => {
     SecureStore.getItemAsync('userRole').then(role => {
       if (role) setUserRole(role);
     });
+
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
   if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
@@ -117,12 +128,37 @@ const DashboardScreen = ({ navigation }) => {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
     >
       <View style={styles.header}>
-        <Text style={styles.welcome}>Welcome, {getTranslation('worker', lang)}</Text>
-        <Text style={styles.date}>{new Date().toDateString()}</Text>
+        <View>
+          <Text style={styles.welcome}>Halo, {getTranslation('worker', lang)}</Text>
+          <Text style={styles.date}>{currentTime.toLocaleDateString()}</Text>
+        </View>
+        <View style={styles.clockContainer}>
+           <Text style={styles.clockText}>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</Text>
+        </View>
+      </View>
+
+      <View style={styles.langToggle}>
         <TouchableOpacity onPress={() => setLang(lang === 'en' ? 'id' : 'en')}>
-           <Text style={{color: '#007AFF'}}>Switch to {lang === 'en' ? 'Indonesian' : 'English'}</Text>
+           <Text style={{color: '#007AFF', fontWeight: '600'}}>{lang === 'en' ? 'Bahasa Indonesia' : 'English'}</Text>
         </TouchableOpacity>
       </View>
+
+      {location && (
+        <View style={styles.mapContainer}>
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: location.latitude,
+              longitude: location.longitude,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
+            }}
+            scrollEnabled={false}
+          >
+            <Marker coordinate={location} title="Your Location" pinColor="#007AFF" />
+          </MapView>
+        </View>
+      )}
 
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
@@ -189,16 +225,21 @@ const DashboardScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  welcome: { fontSize: 24, fontWeight: 'bold' },
-  date: { color: '#666', marginTop: 5 },
-  statsContainer: { flexDirection: 'row', padding: 20, justifyContent: 'space-between' },
-  statBox: { backgroundColor: '#fff', padding: 20, borderRadius: 12, width: '48%', elevation: 2 },
-  statLabel: { color: '#666', fontSize: 14 },
-  statValue: { fontSize: 24, fontWeight: 'bold', marginTop: 5, color: '#007AFF' },
-  actionButton: { margin: 20, backgroundColor: '#007AFF', padding: 20, borderRadius: 12, alignItems: 'center' },
-  actionButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  container: { flex: 1, backgroundColor: '#f0f2f5' },
+  header: { padding: 25, backgroundColor: '#1a237e', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomLeftRadius: 35, borderBottomRightRadius: 35, elevation: 10, paddingTop: 60 },
+  welcome: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  date: { color: '#c5cae9', marginTop: 4, fontSize: 14 },
+  clockContainer: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  clockText: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  langToggle: { paddingHorizontal: 25, marginTop: 20, alignItems: 'flex-end' },
+  mapContainer: { margin: 20, height: 200, borderRadius: 25, overflow: 'hidden', elevation: 5, backgroundColor: '#fff', borderWidth: 2, borderColor: '#fff' },
+  map: { width: '100%', height: '100%' },
+  statsContainer: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 10, justifyContent: 'space-between' },
+  statBox: { backgroundColor: '#fff', padding: 22, borderRadius: 20, width: '48%', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  statLabel: { color: '#757575', fontSize: 13, fontWeight: '600', textTransform: 'uppercase' },
+  statValue: { fontSize: 28, fontWeight: '800', marginTop: 8, color: '#1a237e' },
+  actionButton: { margin: 20, backgroundColor: '#1a237e', padding: 22, borderRadius: 20, alignItems: 'center', elevation: 6, shadowColor: '#1a237e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  actionButtonText: { color: '#fff', fontSize: 20, fontWeight: 'bold', letterSpacing: 1 },
   menuContainer: { padding: 20 },
   menuItem: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginBottom: 10, elevation: 1 },
   menuText: { fontSize: 16 }

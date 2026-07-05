@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime
 from schemas.base import AttendanceLogCreate, AttendanceLogUpdate, RequestStatus
-from database.mongodb import attendance_logs_collection, user_stats_collection
+from database.mongodb import attendance_logs_collection, user_stats_collection, serializable
 from routes.deps import get_current_user
 from services.attendance import calculate_shift_times, calculate_lateness, calculate_overtime
 from services.config import get_config
@@ -148,14 +148,14 @@ async def check_out(log_id: str, update: AttendanceLogUpdate, current_user: dict
 @router.get("/history")
 async def get_history(current_user: dict = Depends(get_current_user)):
     logs = await attendance_logs_collection.find({"user_id": current_user["_id"]}).sort("check_in_time", -1).to_list(100)
-    return logs
+    return serializable(logs)
 
 @router.get("/all-logs")
 async def get_all_logs(admin: dict = Depends(get_current_user)):
     if admin["role"] != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
     logs = await attendance_logs_collection.find().sort("check_in_time", -1).to_list(100)
-    return logs
+    return serializable(logs)
 
 @router.post("/confirm-arrival/{log_id}")
 async def confirm_arrival(log_id: str, current_user: dict = Depends(get_current_user)):

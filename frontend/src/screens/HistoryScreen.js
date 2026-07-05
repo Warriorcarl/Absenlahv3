@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
@@ -7,6 +8,7 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const HistoryScreen = () => {
   const [history, setHistory] = useState([]);
+  const [markedDates, setMarkedDates] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,6 +19,17 @@ const HistoryScreen = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setHistory(response.data);
+
+        // Generate marked dates for calendar
+        const marked = {};
+        response.data.forEach(log => {
+          const dateStr = new Date(log.check_in_time).toISOString().split('T')[0];
+          marked[dateStr] = {
+            selected: true,
+            selectedColor: log.status === 'approved' ? '#4CAF50' : '#FF9800'
+          };
+        });
+        setMarkedDates(marked);
       } catch (error) {
         console.error('Failed to fetch history', error);
       } finally {
@@ -30,6 +43,17 @@ const HistoryScreen = () => {
 
   return (
     <View style={styles.container}>
+      <Calendar
+        markedDates={markedDates}
+        theme={{
+          todayTextColor: '#007AFF',
+          arrowColor: '#007AFF',
+        }}
+        style={styles.calendar}
+      />
+      <View style={styles.listHeader}>
+        <Text style={styles.listHeaderText}>Recent Logs</Text>
+      </View>
       <FlatList
         data={history}
         keyExtractor={(item) => item._id}
@@ -53,7 +77,10 @@ const HistoryScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  calendar: { marginBottom: 10, elevation: 2 },
+  listHeader: { padding: 15, backgroundColor: '#eee' },
+  listHeaderText: { fontWeight: 'bold', color: '#555' },
   item: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
   date: { fontSize: 16, fontWeight: 'bold' },
   time: { color: '#666', marginTop: 5 },

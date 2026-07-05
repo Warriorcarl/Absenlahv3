@@ -10,6 +10,21 @@ DB_NAME = os.getenv("DB_NAME", "absenlah")
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
+def serializable(doc):
+    if not doc: return doc
+    if isinstance(doc, list):
+        return [serializable(d) for d in doc]
+
+    new_doc = {}
+    for k, v in doc.items():
+        if k == "_id":
+            new_doc["_id"] = str(v)
+        elif hasattr(v, "isoformat"): # Date/Datetime
+            new_doc[k] = v.isoformat()
+        else:
+            new_doc[k] = v
+    return new_doc
+
 async def get_database():
     return db
 
