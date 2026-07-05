@@ -29,13 +29,27 @@ async def register(user: UserCreate):
     await users_collection.insert_one(user_dict)
     return {"message": "User registered successfully"}
 
+@router.get("/health")
+async def health():
+    try:
+        count = await users_collection.count_documents({})
+        admin = await users_collection.find_one({"username": "administrator"})
+        return {
+            "status": "healthy",
+            "db_connected": True,
+            "total_users": count,
+            "admin_exists": admin is not None
+        }
+    except Exception as e:
+        return {"status": "unhealthy", "db_connected": False, "error": str(e)}
+
 @router.post("/login")
 async def login(req: LoginRequest):
-    # Support login via Email or Username
+    # Support login via Email or Username (Case Insensitive)
     user = await users_collection.find_one({
         "$or": [
-            {"username": req.username},
-            {"email": req.username}
+            {"username": {"$regex": f"^{req.username}$", "$options": "i"}},
+            {"email": {"$regex": f"^{req.username}$", "$options": "i"}}
         ]
     })
 

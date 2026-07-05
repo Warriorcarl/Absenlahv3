@@ -18,7 +18,10 @@ export const login = async (username, password) => {
     await SecureStore.setItemAsync('userRole', role || 'pekerja');
     return response.data;
   } catch (error) {
-    throw error.response?.data?.detail || 'Login failed';
+    if (error.response) {
+       throw error.response.data?.detail || `Error ${error.response.status}: Login failed`;
+    }
+    throw 'Server Unreachable / Network Error. Please check your internet or EXPO_PUBLIC_BACKEND_URL.';
   }
 };
 
@@ -32,7 +35,10 @@ export const googleLogin = async (token) => {
     await SecureStore.setItemAsync('userRole', role || 'pekerja');
     return response.data;
   } catch (error) {
-    throw error.response?.data?.detail || 'Google Login failed';
+    if (error.response) {
+       throw error.response.data?.detail || `Error ${error.response.status}: Google Login failed`;
+    }
+    throw 'Server Unreachable / Network Error. Please check your internet or EXPO_PUBLIC_BACKEND_URL.';
   }
 };
 

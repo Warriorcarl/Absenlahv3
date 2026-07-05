@@ -47,5 +47,21 @@ If you see `developer_error` in the mobile app:
 - Ensure you have added your email as a **Test User** in the OAuth Consent Screen if the app is still in "Testing" status.
 - Wait a few minutes after configuration, as Google sometimes takes time to propagate changes.
 
-## 5. Setup Script
-When running `setup_absenlah.sh`, provide the **Web Client ID** when prompted for `GOOGLE_CLIENT_ID`.
+## 5. Frequently Asked Questions (FAQ)
+
+### Q: Which Client ID should I use in the `setup_absenlah.sh` script?
+**A: Always use the "Web Application" Client ID.** The backend needs this ID to verify the token sent by the mobile app. The mobile app also uses this ID in its configuration to request the correct token from Google.
+
+### Q: Why do I get `developer_error` even after following the guide?
+**A:** This is almost always caused by a mismatch in the Android configuration:
+1. **SHA-1 Fingerprint:** Ensure the SHA-1 in your Google Cloud Console matches the one from your build. If using Expo EAS, get it from `eas credentials`. If building locally, get it from your local keystore.
+2. **Package Name:** Ensure the package name in Google Cloud Console is exactly `com.absenlah.app`.
+3. **Internal vs External:** If your OAuth status is "Testing", you MUST add your email address under "Test Users" in the OAuth Consent Screen.
+
+### Q: Do I need both Web and Android Client IDs?
+**A: Yes.**
+- The **Android Client ID** allows the Android app to talk to Google services.
+- The **Web Client ID** is the "audience" for the identity token. Without it, the backend cannot securely verify who is logging in.
+
+## 6. Setup Script
+When running `setup_absenlah.sh`, provide the **Web Client ID** when prompted for `GOOGLE_WEB_CLIENT_ID`.

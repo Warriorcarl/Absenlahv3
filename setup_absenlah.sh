@@ -311,7 +311,7 @@ step_configure_env() {
     fi
 
     local google_client_id
-    google_client_id="$(ask "Google Client ID (hit Enter to skip)" "")"
+    google_client_id="$(ask "Google WEB Client ID (from Cloud Console - Required for Auth)" "")"
     local google_client_secret
     google_client_secret="$(ask "Google Client Secret (hit Enter to skip)" "")"
 
