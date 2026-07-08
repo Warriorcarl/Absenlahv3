@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Dimensions } from 'react-native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
 import { extractErrorMessage } from '../utils/ErrorHelper';
+import MapView, { Marker, UrlTile, Circle } from 'react-native-maps';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const CARTO_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
 const AdminConfigScreen = () => {
+  const mapRef = React.useRef(null);
   const [summary, setSummary] = useState(null);
   const [siteName, setSiteName] = useState('');
-  const [radius, setRadius] = useState('');
+  const [radius, setRadius] = useState('100');
   const [coords, setCoords] = useState(null);
+  const [region, setRegion] = useState(null);
   const [targetUserId, setTargetUserId] = useState('');
   const [configs, setConfigs] = useState([]);
   const [users, setUsers] = useState([]);
@@ -78,9 +83,24 @@ const AdminConfigScreen = () => {
       Alert.alert('Permission denied');
       return;
     }
-    let location = await Location.getCurrentPositionAsync({});
-    setCoords(location.coords);
-    Alert.alert('Location Fetched', `Lat: ${location.coords.latitude}, Lon: ${location.coords.longitude}`);
+    let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+    const newCoords = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+    setCoords(newCoords);
+
+    const newRegion = {
+      ...newCoords,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    };
+    setRegion(newRegion);
+
+    if (mapRef.current) {
+      mapRef.current.animateToRegion(newRegion, 1000);
+    }
+    Alert.alert('Location Fetched', `Lat: ${newCoords.latitude.toFixed(6)}, Lon: ${newCoords.longitude.toFixed(6)}`);
   };
 
   const handleAddGeofence = async () => {
@@ -144,11 +164,42 @@ const AdminConfigScreen = () => {
       <Text style={[styles.sectionTitle, { marginTop: 40 }]}>Manage Geofence</Text>
       <TextInput style={styles.input} placeholder="Site Name" value={siteName} onChangeText={setSiteName} />
       <TextInput style={styles.input} placeholder="Radius (meters)" keyboardType="numeric" value={radius} onChangeText={setRadius} />
+
+      {region && (
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={region}
+            mapType="none"
+          >
+            <UrlTile urlTemplate={CARTO_URL} maximumZ={19} flipY={false} />
+            {coords && (
+              <>
+                <Marker coordinate={coords} title="Selected Location" />
+                <Circle
+                  center={coords}
+                  radius={parseInt(radius) || 0}
+                  fillColor="rgba(0, 122, 255, 0.2)"
+                  strokeColor="rgba(0, 122, 255, 0.5)"
+                />
+              </>
+            )}
+          </MapView>
+          <TouchableOpacity
+            style={styles.locationButton}
+            onPress={fetchCurrentLocation}
+          >
+            <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#1a237e" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TouchableOpacity style={styles.locationBtn} onPress={fetchCurrentLocation}>
-        <Text style={styles.btnText}>Use Current Location</Text>
+        <Text style={styles.btnText}>Fetch GPS Location</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.saveBtn} onPress={handleAddGeofence}>
-        <Text style={styles.btnText}>Add Site</Text>
+        <Text style={styles.btnText}>Save Geofence Site</Text>
       </TouchableOpacity>
 
       <Text style={[styles.sectionTitle, { marginTop: 40 }]}>Reports</Text>
@@ -198,6 +249,17 @@ const styles = StyleSheet.create({
   configInput: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 4, padding: 5, textAlign: 'right' },
   locationBtn: { backgroundColor: '#FF9800', padding: 15, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
   saveBtn: { backgroundColor: '#007AFF', padding: 15, borderRadius: 8, alignItems: 'center' },
+  mapContainer: { height: 300, borderRadius: 15, overflow: 'hidden', marginBottom: 15, borderSize: 1, borderColor: '#ddd', position: 'relative' },
+  map: { width: '100%', height: '100%' },
+  locationButton: {
+    position: 'absolute',
+    bottom: 15,
+    right: 15,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 30,
+    elevation: 8,
+  },
   btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   smallBtn: { padding: 8, borderRadius: 4, minWidth: 60, alignItems: 'center' },
   smallBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 }

@@ -8,11 +8,14 @@ import { extractErrorMessage } from '../utils/ErrorHelper';
 import { checkIn, checkOut } from '../services/AttendanceService';
 import { getTranslation } from '../i18n';
 import CameraLiveness from '../components/CameraLiveness';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const CARTO_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
 const DashboardScreen = ({ navigation }) => {
+  const mapRef = React.useRef(null);
   const [lang, setLang] = useState('id');
   const [stats, setStats] = useState(null);
   const [todayLog, setTodayLog] = useState(null);
@@ -22,6 +25,7 @@ const DashboardScreen = ({ navigation }) => {
   const [userRole, setUserRole] = useState('pekerja');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [location, setLocation] = useState(null);
+  const [region, setRegion] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -34,8 +38,7 @@ const DashboardScreen = ({ navigation }) => {
       const historyRes = await axios.get(`${API_URL}/attendance/history`, { headers });
       const logs = historyRes.data;
 
-      const loc = await Location.getCurrentPositionAsync({});
-      setLocation(loc.coords);
+      await updateCurrentLocation();
 
       if (logs.length > 0) {
         const lastLog = logs[0];
@@ -77,6 +80,36 @@ const DashboardScreen = ({ navigation }) => {
       } catch (error) {
         Alert.alert('Error', extractErrorMessage(error));
       }
+    }
+  };
+
+  const updateCurrentLocation = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Permission to access location was denied');
+        return;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const newCoords = {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      };
+      setLocation(newCoords);
+
+      const newRegion = {
+        ...newCoords,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      };
+      setRegion(newRegion);
+
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(newRegion, 1000);
+      }
+    } catch (error) {
+      console.error('Error fetching location:', error);
     }
   };
 
@@ -143,20 +176,27 @@ const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {location && (
+      {region && (
         <View style={styles.mapContainer}>
           <MapView
+            ref={mapRef}
             style={styles.map}
-            initialRegion={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            }}
-            scrollEnabled={false}
+            initialRegion={region}
+            mapType="none"
           >
-            <Marker coordinate={location} title="Your Location" pinColor="#007AFF" />
+            <UrlTile
+              urlTemplate={CARTO_URL}
+              maximumZ={19}
+              flipY={false}
+            />
+            {location && <Marker coordinate={location} title="Your Location" pinColor="#007AFF" />}
           </MapView>
+          <TouchableOpacity
+            style={styles.locationButton}
+            onPress={updateCurrentLocation}
+          >
+            <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#1a237e" />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -232,8 +272,21 @@ const styles = StyleSheet.create({
   clockContainer: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   clockText: { fontSize: 20, fontWeight: '700', color: '#fff' },
   langToggle: { paddingHorizontal: 25, marginTop: 20, alignItems: 'flex-end' },
-  mapContainer: { margin: 20, height: 200, borderRadius: 25, overflow: 'hidden', elevation: 5, backgroundColor: '#fff', borderWidth: 2, borderColor: '#fff' },
+  mapContainer: { margin: 20, height: 250, borderRadius: 25, overflow: 'hidden', elevation: 5, backgroundColor: '#fff', borderWidth: 2, borderColor: '#fff', position: 'relative' },
   map: { width: '100%', height: '100%' },
+  locationButton: {
+    position: 'absolute',
+    bottom: 15,
+    right: 15,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 30,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
   statsContainer: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 10, justifyContent: 'space-between' },
   statBox: { backgroundColor: '#fff', padding: 22, borderRadius: 20, width: '48%', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
   statLabel: { color: '#757575', fontSize: 13, fontWeight: '600', textTransform: 'uppercase' },
